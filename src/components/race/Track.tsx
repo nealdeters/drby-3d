@@ -6,9 +6,9 @@ import { TRACK, ovalPoint } from './trackMath'
 /** Dirt racing strip — darker brown than the old sandy tan */
 const DIRT = '#8b5a2b'
 const DIRT_WEAR = '#7a4e24'
-/** Asphalt racing strip */
-const ASPHALT = '#2a2a2e'
-const ASPHALT_WEAR = '#3a3a40'
+/** Asphalt racing strip — cool slate (stays gray under warm venue lights) */
+const ASPHALT = '#1e293b'
+const ASPHALT_WEAR = '#334155'
 const RAIL = '#f5f5f0'
 const TURF = '#3d8f3a'
 const TURF_DEEP = '#2f7a32'
@@ -434,14 +434,15 @@ function racingSurfaceColors(surface: TrackSurface): {
   wear: string
   wearOpacity: number
   roughness: number
+  metalness: number
 } {
   if (surface === 'asphalt') {
-    return { base: ASPHALT, wear: ASPHALT_WEAR, wearOpacity: 0.35, roughness: 0.72 }
+    return { base: ASPHALT, wear: ASPHALT_WEAR, wearOpacity: 0.4, roughness: 0.58, metalness: 0.22 }
   }
   if (surface === 'turf' || surface === 'grass') {
-    return { base: TURF_RACE, wear: TURF_RACE_WEAR, wearOpacity: 0.4, roughness: 0.92 }
+    return { base: TURF_RACE, wear: TURF_RACE_WEAR, wearOpacity: 0.4, roughness: 0.92, metalness: 0 }
   }
-  return { base: DIRT, wear: DIRT_WEAR, wearOpacity: 0.5, roughness: 0.98 }
+  return { base: DIRT, wear: DIRT_WEAR, wearOpacity: 0.5, roughness: 0.98, metalness: 0 }
 }
 
 export function Track({ surface = 'dirt' }: { surface?: TrackSurface }) {
@@ -507,7 +508,11 @@ export function Track({ surface = 'dirt' }: { surface?: TrackSurface }) {
 
       {/* Racing surface — dirt / asphalt / grass by track type */}
       <mesh geometry={dirtGeo} receiveShadow>
-        <meshStandardMaterial color={raceColors.base} roughness={raceColors.roughness} />
+        <meshStandardMaterial
+          color={raceColors.base}
+          roughness={raceColors.roughness}
+          metalness={raceColors.metalness}
+        />
       </mesh>
       <mesh geometry={wearGeo} position={[0, 0.005, 0]} receiveShadow>
         <meshStandardMaterial
@@ -572,16 +577,16 @@ export function Track({ surface = 'dirt' }: { surface?: TrackSurface }) {
         <meshStandardMaterial color={GOLD} metalness={0.5} roughness={0.3} />
       </mesh>
 
-      {/* Turf + apron gap past outer rail (~z 15.3) — mid setback (not flush, not far) */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 16.35]} receiveShadow>
-        <planeGeometry args={[48, 2.0]} />
+      {/* Clear turf + apron gap past outer rail (~z 15.3) — stands set back so dirt stays clear */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 16.8]} receiveShadow>
+        <planeGeometry args={[48, 2.6]} />
         <meshStandardMaterial color="#3d8f3a" roughness={0.95} />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 17.9]} receiveShadow>
-        <planeGeometry args={[46, 1.8]} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 19.0]} receiveShadow>
+        <planeGeometry args={[46, 2.2]} />
         <meshStandardMaterial color="#efe6d4" roughness={0.92} />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.025, 17.9]} receiveShadow>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.025, 19.0]} receiveShadow>
         <planeGeometry args={[44, 0.14]} />
         <meshStandardMaterial color="#e0d4bc" roughness={0.88} />
       </mesh>
@@ -595,8 +600,8 @@ export function Track({ surface = 'dirt' }: { surface?: TrackSurface }) {
         <meshStandardMaterial color="#2f7a32" roughness={1} />
       </mesh>
 
-      {/* Near grandstand — mid setback from outer rail; warm wood tiers; thin canopy */}
-      <group position={[0, 0, 19.4]}>
+      {/* Near grandstand — set back from outer rail; warm wood tiers; thin canopy (no navy asphalt slab) */}
+      <group position={[0, 0, 21.2]}>
         {[0, 1, 2, 3, 4, 5, 6, 7].map((row) => (
           <mesh key={row} position={[0, 0.35 + row * 0.48, row * 0.55]} castShadow receiveShadow>
             <boxGeometry args={[38 - row * 0.55, 0.28, 0.8]} />
@@ -645,7 +650,7 @@ export function Track({ surface = 'dirt' }: { surface?: TrackSurface }) {
       </group>
 
       {/* Extended lower wood seating / patio beyond main stand — fills bottom of frame */}
-      <group position={[0, 0, 25.1]}>
+      <group position={[0, 0, 27.0]}>
         {[0, 1, 2, 3].map((row) => (
           <mesh key={row} position={[0, 0.22 + row * 0.38, row * 0.55]} castShadow receiveShadow>
             <boxGeometry args={[44 - row * 0.4, 0.22, 0.75]} />
@@ -660,18 +665,18 @@ export function Track({ surface = 'dirt' }: { surface?: TrackSurface }) {
       </group>
 
       {/* Landscaping along apron — hedges + blooms (outside oval, clear of dirt) */}
-      <FlowerBed position={[-12, 0, 17.25]} width={9} />
-      <FlowerBed position={[12, 0, 17.25]} width={9} />
-      <FlowerBed position={[0, 0, 17.25]} width={7} />
-      <FlowerBed position={[-18, 0, 18.7]} width={6} />
-      <FlowerBed position={[18, 0, 18.7]} width={6} />
-      <HedgeBox position={[-20, 0.4, 17.6]} size={[8, 0.8, 0.55]} />
-      <HedgeBox position={[20, 0.4, 17.6]} size={[8, 0.8, 0.55]} />
-      <HedgeBox position={[0, 0.35, 18.85]} size={[34, 0.55, 0.4]} />
-      <HedgeBox position={[-22, 0.45, 22.2]} size={[0.7, 0.9, 8]} />
-      <HedgeBox position={[22, 0.45, 22.2]} size={[0.7, 0.9, 8]} />
-      <FlowerBed position={[-8, 0, 28.3]} width={10} />
-      <FlowerBed position={[8, 0, 28.3]} width={10} />
+      <FlowerBed position={[-12, 0, 18.4]} width={9} />
+      <FlowerBed position={[12, 0, 18.4]} width={9} />
+      <FlowerBed position={[0, 0, 18.4]} width={7} />
+      <FlowerBed position={[-18, 0, 20.0]} width={6} />
+      <FlowerBed position={[18, 0, 20.0]} width={6} />
+      <HedgeBox position={[-20, 0.4, 18.8]} size={[8, 0.8, 0.55]} />
+      <HedgeBox position={[20, 0.4, 18.8]} size={[8, 0.8, 0.55]} />
+      <HedgeBox position={[0, 0.35, 20.35]} size={[34, 0.55, 0.4]} />
+      <HedgeBox position={[-22, 0.45, 24.0]} size={[0.7, 0.9, 8]} />
+      <HedgeBox position={[22, 0.45, 24.0]} size={[0.7, 0.9, 8]} />
+      <FlowerBed position={[-8, 0, 30.2]} width={10} />
+      <FlowerBed position={[8, 0, 30.2]} width={10} />
 
       <HedgeBox position={[-8, 0.35, 0]} size={[1.2, 0.7, 3.5]} />
       <HedgeBox position={[8, 0.35, 0]} size={[1.2, 0.7, 3.5]} />

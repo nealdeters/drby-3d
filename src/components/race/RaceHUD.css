@@ -77,7 +77,8 @@
 .race-hud__side {
   display: none;
   flex-direction: column;
-  max-height: calc(100% - 1.5rem);
+  /* Compact panel over stands — keep dirt oval clear */
+  max-height: min(46vh, calc(100% - 5.5rem));
   overflow: hidden;
   background: linear-gradient(
     165deg,
@@ -91,7 +92,7 @@
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
   width: min(260px, 100%);
   margin-left: auto;
-  align-self: flex-start;
+  align-self: flex-end;
 }
 
 .race-hud__side .panel-header {
@@ -167,6 +168,9 @@
   color: var(--cream);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.26);
   max-width: 100%;
+  /* Sit low over the grandstand (bottom of race canvas), not under the tote */
+  margin-top: auto;
+  width: 100%;
 }
 
 .race-hud__order-label {
@@ -240,12 +244,14 @@
     flex-direction: row;
     flex-wrap: wrap;
     align-items: flex-start;
+    align-content: space-between;
     justify-content: space-between;
     padding: 0.75rem 1rem;
   }
 
   .race-hud__top {
     max-width: min(340px, calc(100% - 290px));
+    align-self: flex-start;
   }
 
   /* Desktop: full field panel carries place order; keep compact strip off */
@@ -256,5 +262,8 @@
   .race-hud__side {
     display: flex;
     margin-left: 0;
+    /* Bottom-right over grandstand, not crowding top tote */
+    align-self: flex-end;
+    margin-top: auto;
   }
 }

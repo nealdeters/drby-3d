@@ -49,9 +49,10 @@ export function mapLiveRacerToHorse(r: LiveRacer, index: number): Horse {
   }
 }
 
-function mapLiveSurface(surface: LiveTrack['surface']): Track['surface'] {
-  if (surface === 'asphalt') return 'asphalt'
-  if (surface === 'grass') return 'turf'
+function mapLiveSurface(surface: LiveTrack['surface'] | string | null | undefined): Track['surface'] {
+  const s = String(surface ?? '').trim().toLowerCase()
+  if (s === 'asphalt' || s === 'tarmac' || s === 'pavement' || s === 'road') return 'asphalt'
+  if (s === 'grass' || s === 'turf') return 'turf'
   return 'dirt'
 }
 

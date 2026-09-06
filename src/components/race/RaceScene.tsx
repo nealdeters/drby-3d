@@ -248,7 +248,7 @@ export function RaceScene({
         shadow-bias={-0.0002}
       />
       <directionalLight position={[-20, 18, -12]} intensity={0.35} color="#a8c8f0" />
-      <Track surface={surface} />
+      <Track key={surface} surface={surface} />
       <RacingField
         horses={horses}
         liveFeed={liveFeed}

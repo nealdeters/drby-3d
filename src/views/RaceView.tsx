@@ -64,15 +64,51 @@ export function RaceView() {
 
   const trackLaps = season.currentRace?.track?.laps ?? 1
 
+  /** Resolve racing-strip surface from live race track first, then catalogs — never drop asphalt. */
   const trackSurface = useMemo(() => {
-    const live = season.currentRace?.track?.surface
-    if (live === 'asphalt') return 'asphalt' as const
-    if (live === 'grass') return 'turf' as const
-    if (live === 'dirt') return 'dirt' as const
-    const mapped = currentEntry ? season.trackById(currentEntry.trackId)?.surface : undefined
-    if (mapped === 'asphalt' || mapped === 'turf' || mapped === 'dirt') return mapped
+    const normalize = (raw: unknown): 'asphalt' | 'turf' | 'dirt' | null => {
+      if (raw == null) return null
+      const s = String(raw).trim().toLowerCase()
+      if (!s) return null
+      if (s === 'asphalt' || s === 'tarmac' || s === 'pavement' || s === 'road') return 'asphalt'
+      if (s === 'grass' || s === 'turf') return 'turf'
+      if (s === 'dirt' || s === 'sand' || s === 'mud') return 'dirt'
+      return null
+    }
+
+    const trackId =
+      season.currentRace?.track?.id ??
+      currentEntry?.trackId ??
+      null
+
+    const candidates: unknown[] = [
+      season.currentRace?.track?.surface,
+      // Live catalog by id (authoritative when schedule embed is incomplete)
+      trackId
+        ? season.liveTracks.find((t) => t.id === trackId)?.surface
+        : undefined,
+      // Schedule embed for this race id
+      season.currentRace?.id
+        ? season.schedule.find((e) => e.id === season.currentRace?.id)?.track?.surface
+        : undefined,
+      trackId ? season.schedule.find((e) => e.track?.id === trackId)?.track?.surface : undefined,
+      // Mapped season tracks (live-mapped, not fake-only when live ids present)
+      trackId ? season.trackById(trackId)?.surface : undefined,
+      currentEntry ? season.trackById(currentEntry.trackId)?.surface : undefined,
+    ]
+
+    for (const c of candidates) {
+      const n = normalize(c)
+      if (n) return n
+    }
     return 'dirt' as const
-  }, [season, currentEntry])
+  }, [
+    season.currentRace,
+    season.liveTracks,
+    season.schedule,
+    season.trackById,
+    currentEntry,
+  ])
 
   // Live-driven in live mode (subscribed or waiting) — isRacing chooses gate-hold vs progressMap
   // Never fall back to demo stepField between races while in live mode
