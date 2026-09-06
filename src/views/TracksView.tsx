@@ -1,4 +1,11 @@
 import { useLiveData } from '../context/LiveDataContext'
+import type { Track } from '../data/fakeSeason'
+
+function surfaceLabel(surface: Track['surface']): string {
+  if (surface === 'asphalt') return 'Asphalt'
+  if (surface === 'turf') return 'Grass'
+  return 'Dirt'
+}
 
 export function TracksView() {
   const { mode, tracks, loading } = useLiveData()
@@ -9,7 +16,10 @@ export function TracksView() {
         <div>
           <span className="view-kicker">Venues</span>
           <h1>Tracks</h1>
-          <p>Dirt ovals and turf courses on the DRBY map — surfaces, distances, and local color.</p>
+          <p>
+            Dirt, asphalt, and grass courses on the DRBY map — surfaces, distances, and local
+            color.
+          </p>
         </div>
         <span className="badge" data-mode={mode}>
           {mode === 'live' ? 'Live API' : 'Program cards'}
@@ -22,7 +32,7 @@ export function TracksView() {
         {tracks.map((t) => (
           <article key={t.id} className="card">
             <span className="badge">
-              {t.surface} · {t.lengthFurlongs}f
+              {surfaceLabel(t.surface)} · {t.lengthFurlongs}f
             </span>
             <h3 style={{ marginTop: '0.75rem' }}>{t.name}</h3>
             <p className="muted" style={{ marginBottom: '0.55rem' }}>

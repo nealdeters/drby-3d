@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type MutableRefObject } from 'react'
 import { formatPurse, formatWhen, type Horse, type RaceEntry } from '../../data/fakeSeason'
 import type { DataMode } from '../../types/live'
 import './RaceHUD.css'
@@ -15,6 +15,17 @@ type Props = {
   /** First future (!completed && startTime > now) race for countdown */
   nextRace: RaceEntry | null
   trackName?: string
+  /** Overall progress 0–1 per horse id — read on a throttle, never every frame */
+  progressRef?: MutableRefObject<Record<string, number>>
+}
+
+type OrderRow = {
+  id: string
+  place: number
+  number: number
+  name: string
+  jersey: string
+  progress: number
 }
 
 function formatClock(totalSec: number): string {
@@ -22,6 +33,15 @@ function formatClock(totalSec: number): string {
   const mm = String(Math.floor(s / 60)).padStart(2, '0')
   const ss = String(s % 60).padStart(2, '0')
   return `${mm}:${ss}`
+}
+
+function luminance(hex: string): number {
+  const h = hex.replace('#', '')
+  if (h.length < 6) return 0.5
+  const r = parseInt(h.slice(0, 2), 16) / 255
+  const g = parseInt(h.slice(2, 4), 16) / 255
+  const b = parseInt(h.slice(4, 6), 16) / 255
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
 }
 
 export function RaceHUD({
@@ -34,6 +54,7 @@ export function RaceHUD({
   currentRace,
   nextRace,
   trackName,
+  progressRef,
 }: Props) {
   const live =
     currentRace ??
@@ -47,6 +68,7 @@ export function RaceHUD({
     null
 
   const [countdown, setCountdown] = useState(0)
+  const [order, setOrder] = useState<OrderRow[]>([])
 
   useEffect(() => {
     if (isRacing) {
@@ -68,9 +90,6 @@ export function RaceHUD({
     return () => window.clearInterval(id)
   }, [upcoming, isRacing])
 
-  const raceTimeLabel = formatClock(elapsedMs / 1000)
-  const countdownLabel = formatClock(countdown)
-
   const fieldHorses = useMemo(() => {
     if (live?.horseIds?.length) {
       const set = new Set(live.horseIds)
@@ -82,6 +101,36 @@ export function RaceHUD({
     }
     return horses
   }, [horses, live])
+
+  // Throttled running order from progressRef (~6 Hz) — no setState every frame
+  useEffect(() => {
+    const build = (): OrderRow[] => {
+      const rows = fieldHorses.map((h, i) => {
+        const fromRef = progressRef?.current?.[h.id]
+        const progress =
+          typeof fromRef === 'number' && Number.isFinite(fromRef) ? fromRef : 0
+        return {
+          id: h.id,
+          place: 0,
+          number: h.number || i + 1,
+          name: h.name,
+          jersey: h.jersey,
+          progress,
+        }
+      })
+      rows.sort((a, b) => b.progress - a.progress || a.number - b.number)
+      return rows.map((r, i) => ({ ...r, place: i + 1 }))
+    }
+
+    setOrder(build())
+    const id = window.setInterval(() => {
+      setOrder(build())
+    }, 160) // ~6 Hz
+    return () => window.clearInterval(id)
+  }, [fieldHorses, progressRef])
+
+  const raceTimeLabel = formatClock(elapsedMs / 1000)
+  const countdownLabel = formatClock(countdown)
 
   const modeLabel = mode === 'live' ? (feedConnected || isRacing ? 'Live' : 'Live · waiting') : 'Demo'
   const paceLabel =
@@ -124,6 +173,33 @@ export function RaceHUD({
         </div>
       </div>
 
+      {/* Always-visible running order (mobile top strip + desktop) */}
+      <div className="race-hud__order panel" aria-label="Running order">
+        <div className="race-hud__order-label">
+          <span className="muted">{isRacing ? 'Running order' : 'Field'}</span>
+          <span className="badge" data-mode={mode}>
+            {paceLabel}
+          </span>
+        </div>
+        <div className="race-hud__order-scroll">
+          {order.map((row) => {
+            const fg = luminance(row.jersey) > 0.55 ? '#142038' : '#ffffff'
+            return (
+              <div key={row.id} className="race-hud__order-row">
+                <span className="race-hud__place">{row.place}</span>
+                <span
+                  className="race-hud__num"
+                  style={{ background: row.jersey, color: fg }}
+                >
+                  {row.number}
+                </span>
+                <span className="race-hud__order-name">{row.name}</span>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
       <aside className="race-hud__side panel">
         <div className="panel-header">
           <h2>Field</h2>
@@ -132,17 +208,22 @@ export function RaceHUD({
           </span>
         </div>
         <div className="panel-body race-hud__field">
-          {fieldHorses.map((h) => (
-            <div key={h.id} className="race-hud__row">
-              <span className="race-hud__num" style={{ background: h.jersey }}>
-                {h.number}
-              </span>
-              <div>
-                <strong>{h.name}</strong>
-                <div className="muted">{h.jockey}</div>
+          {order.map((row) => {
+            const h = fieldHorses.find((x) => x.id === row.id)
+            const fg = luminance(row.jersey) > 0.55 ? '#142038' : '#ffffff'
+            return (
+              <div key={row.id} className="race-hud__row">
+                <span className="race-hud__place">{row.place}</span>
+                <span className="race-hud__num" style={{ background: row.jersey, color: fg }}>
+                  {row.number}
+                </span>
+                <div>
+                  <strong>{row.name}</strong>
+                  <div className="muted">{h?.jockey ?? '—'}</div>
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
         {!isRacing && upcoming && (
           <div className="race-hud__next">

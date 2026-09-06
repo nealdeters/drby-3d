@@ -13,7 +13,7 @@ export type Track = {
   id: string
   name: string
   city: string
-  surface: 'dirt' | 'turf'
+  surface: 'dirt' | 'turf' | 'asphalt'
   lengthFurlongs: number
   description: string
 }
@@ -87,6 +87,14 @@ export const TRACKS: Track[] = [
     surface: 'dirt',
     lengthFurlongs: 10,
     description: 'Long oval with a punishing backstretch headwind.',
+  },
+  {
+    id: 't-circuit',
+    name: 'Night Circuit',
+    city: 'Vegas',
+    surface: 'asphalt',
+    lengthFurlongs: 8,
+    description: 'Floodlit asphalt oval — grip over grind for night cards.',
   },
 ]
 

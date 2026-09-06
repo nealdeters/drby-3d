@@ -49,8 +49,14 @@ export function mapLiveRacerToHorse(r: LiveRacer, index: number): Horse {
   }
 }
 
+function mapLiveSurface(surface: LiveTrack['surface']): Track['surface'] {
+  if (surface === 'asphalt') return 'asphalt'
+  if (surface === 'grass') return 'turf'
+  return 'dirt'
+}
+
 function mapLiveTrack(t: LiveTrack): Track {
-  const surface = t.surface === 'grass' ? 'turf' : 'dirt'
+  const surface = mapLiveSurface(t.surface)
   return {
     id: t.id,
     name: t.name,

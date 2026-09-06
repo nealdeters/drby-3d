@@ -4,7 +4,7 @@ import { Environment, PerspectiveCamera, Sky } from '@react-three/drei'
 import * as THREE from 'three'
 import type { Horse } from '../../data/fakeSeason'
 import { HorseMesh } from './Horse'
-import { Track } from './Track'
+import { Track, type TrackSurface } from './Track'
 import { createFieldState, stepField, type HorseSimState } from './trackMath'
 
 /**
@@ -200,6 +200,8 @@ export type RaceSceneProps = {
   liveFeed?: boolean
   isRacing?: boolean
   trackLaps?: number
+  /** Racing surface look for the oval strip */
+  surface?: TrackSurface
   progressRef?: MutableRefObject<Record<string, number>>
   laneRef?: MutableRefObject<Record<string, number>>
 }
@@ -209,6 +211,7 @@ export function RaceScene({
   liveFeed = false,
   isRacing = false,
   trackLaps = 1,
+  surface = 'dirt',
   progressRef,
   laneRef,
 }: RaceSceneProps) {
@@ -245,7 +248,7 @@ export function RaceScene({
         shadow-bias={-0.0002}
       />
       <directionalLight position={[-20, 18, -12]} intensity={0.35} color="#a8c8f0" />
-      <Track />
+      <Track surface={surface} />
       <RacingField
         horses={horses}
         liveFeed={liveFeed}

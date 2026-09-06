@@ -64,6 +64,16 @@ export function RaceView() {
 
   const trackLaps = season.currentRace?.track?.laps ?? 1
 
+  const trackSurface = useMemo(() => {
+    const live = season.currentRace?.track?.surface
+    if (live === 'asphalt') return 'asphalt' as const
+    if (live === 'grass') return 'turf' as const
+    if (live === 'dirt') return 'dirt' as const
+    const mapped = currentEntry ? season.trackById(currentEntry.trackId)?.surface : undefined
+    if (mapped === 'asphalt' || mapped === 'turf' || mapped === 'dirt') return mapped
+    return 'dirt' as const
+  }, [season, currentEntry])
+
   // Live-driven in live mode (subscribed or waiting) — isRacing chooses gate-hold vs progressMap
   // Never fall back to demo stepField between races while in live mode
   const liveFeed = season.mode === 'live'
@@ -76,6 +86,7 @@ export function RaceView() {
           liveFeed={liveFeed}
           isRacing={feed.isRacing}
           trackLaps={trackLaps}
+          surface={trackSurface}
           progressRef={feed.progressRef}
           laneRef={feed.laneRef}
         />
@@ -90,6 +101,7 @@ export function RaceView() {
         currentRace={currentEntry}
         nextRace={countdownTarget}
         trackName={trackName}
+        progressRef={feed.progressRef}
       />
     </div>
   )

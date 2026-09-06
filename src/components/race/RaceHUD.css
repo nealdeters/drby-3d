@@ -150,9 +150,95 @@
   border-top: 1px solid rgba(232, 236, 228, 0.1);
 }
 
+
+.race-hud__order {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.4rem 0.55rem 0.45rem;
+  background: linear-gradient(
+    165deg,
+    rgba(18, 32, 42, 0.86),
+    rgba(12, 24, 34, 0.82)
+  );
+  border: 1px solid rgba(201, 162, 39, 0.32);
+  border-radius: var(--radius-sm);
+  backdrop-filter: blur(12px);
+  color: var(--cream);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.26);
+  max-width: 100%;
+}
+
+.race-hud__order-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.race-hud__order-label .muted {
+  color: rgba(232, 236, 228, 0.62);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.race-hud__order-label .badge {
+  background: rgba(201, 162, 39, 0.16);
+  border-color: rgba(201, 162, 39, 0.4);
+  color: var(--gold-bright);
+  font-size: 0.6rem;
+  padding: 0.12rem 0.4rem;
+}
+
+.race-hud__order-scroll {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 0.35rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  padding-bottom: 0.1rem;
+}
+
+.race-hud__order-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: 0.2rem 0.4rem 0.2rem 0.28rem;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(232, 236, 228, 0.08);
+}
+
+.race-hud__order-name {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--cream);
+  white-space: nowrap;
+  max-width: 7.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.race-hud__place {
+  width: 1.1rem;
+  flex-shrink: 0;
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--gold-bright);
+  font-variant-numeric: tabular-nums;
+}
+
 @media (min-width: 900px) {
   .race-hud {
     flex-direction: row;
+    flex-wrap: wrap;
     align-items: flex-start;
     justify-content: space-between;
     padding: 0.75rem 1rem;
@@ -160,6 +246,11 @@
 
   .race-hud__top {
     max-width: min(340px, calc(100% - 290px));
+  }
+
+  /* Desktop: full field panel carries place order; keep compact strip off */
+  .race-hud__order {
+    display: none;
   }
 
   .race-hud__side {

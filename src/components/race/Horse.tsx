@@ -43,6 +43,14 @@ export function HorseMesh({ horse, index, fieldRef }: Props) {
   const sock = '#f2eee6'
   const hoof = '#1a1410'
   const mane = coatDark
+  const numeralColor = useMemo(
+    () => (plateLuminance(horse.jersey) > 0.55 ? '#0a1220' : '#ffffff'),
+    [horse.jersey],
+  )
+  const numeralOutline = useMemo(
+    () => (plateLuminance(horse.jersey) > 0.55 ? '#ffffff' : '#0a1220'),
+    [horse.jersey],
+  )
 
   useFrame((_, dt) => {
     if (!root.current) return
@@ -284,22 +292,28 @@ export function HorseMesh({ horse, index, fieldRef }: Props) {
         </group>
       </group>
 
-      {/* Number plate */}
-      <Billboard position={[0, 1.85, 0]} follow>
+      {/* Number plate — larger high-contrast jersey + white/black numeral */}
+      <Billboard position={[0, 2.05, 0]} follow>
+        <mesh position={[0, 0, -0.03]}>
+          <planeGeometry args={[0.78, 0.62]} />
+          <meshBasicMaterial color="#0a1220" />
+        </mesh>
+        <mesh position={[0, 0, -0.02]}>
+          <planeGeometry args={[0.7, 0.54]} />
+          <meshBasicMaterial color={horse.jersey} />
+        </mesh>
         <Text
-          fontSize={0.32}
-          color="#f7f2e8"
+          position={[0, 0, 0.01]}
+          fontSize={0.46}
+          color={numeralColor}
           anchorX="center"
           anchorY="middle"
-          outlineWidth={0.028}
-          outlineColor="#0f1c3a"
+          outlineWidth={0.04}
+          outlineColor={numeralOutline}
+          fontWeight={700}
         >
           {String(horse.number)}
         </Text>
-        <mesh position={[0, 0, -0.02]}>
-          <planeGeometry args={[0.5, 0.4]} />
-          <meshBasicMaterial color={horse.jersey} transparent opacity={0.92} />
-        </mesh>
       </Billboard>
     </group>
   )
@@ -376,6 +390,11 @@ function applyLeg(leg: LegRefs | null, swing: number, hind: boolean) {
   // Knee folds more on the recovery (negative swing)
   const fold = Math.max(0, -swing)
   leg.knee.rotation.x = kneeBase + fold * kneeAmp
+}
+
+function plateLuminance(hex: string): number {
+  const c = new THREE.Color(hex)
+  return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b
 }
 
 function darken(hex: string, amount: number): string {
