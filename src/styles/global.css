@@ -33,6 +33,10 @@
   --radius-sm: 8px;
   --font-display: 'Fraunces', 'Cormorant Garamond', Georgia, serif;
   --font-body: 'Source Sans 3', 'IBM Plex Sans', system-ui, sans-serif;
+  /* Heavy italic sans wordmark — matches 2D DRBY. logo */
+  --font-logo: 'Source Sans 3', 'IBM Plex Sans', system-ui, sans-serif;
+  /* Soft muted cream-gold period that reads on deep racing green */
+  --logo-dot: #c5ddcc;
   --shadow-soft: 0 8px 28px rgba(0, 0, 0, 0.4);
   --shadow-card: 0 4px 18px rgba(0, 0, 0, 0.32);
   --border-gold: 1px solid rgba(212, 196, 138, 0.35);

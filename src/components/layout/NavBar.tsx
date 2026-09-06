@@ -37,12 +37,11 @@ export function NavBar({ view, onNavigate, menuOpen, onToggleMenu, onCloseMenu }
         }}
         role="button"
         tabIndex={0}
+        aria-label="DRBY — go to race"
       >
-        <span className="nav__mark" aria-hidden />
-        <div>
-          <strong>DRBY</strong>
-          <span className="nav__sub">Race day · 3D</span>
-        </div>
+        <span className="nav__logo" aria-hidden="true">
+          DRBY<span className="nav__logo-dot">.</span>
+        </span>
       </div>
 
       <nav className="nav__tabs" aria-label="Primary">

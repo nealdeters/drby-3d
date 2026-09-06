@@ -19,35 +19,24 @@
   min-width: 0;
 }
 
-.nav__brand strong {
-  font-family: var(--font-display);
-  font-size: 1.5rem;
+/* Match 2D DRBY. wordmark: heavy bold italic sans + soft period */
+.nav__logo {
+  font-family: var(--font-logo);
+  font-size: 1.85rem;
+  font-weight: 900;
+  font-style: italic;
   color: var(--cream);
-  letter-spacing: 0.1em;
-  display: block;
+  letter-spacing: -0.06em;
   line-height: 1;
-  font-weight: 700;
+  display: inline-block;
+  user-select: none;
+  text-shadow: 0 1px 0 rgba(8, 16, 12, 0.35);
 }
 
-.nav__sub {
-  display: block;
-  font-size: 0.68rem;
-  color: rgba(240, 247, 242, 0.7);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  margin-top: 0.15rem;
-}
-
-.nav__mark {
-  width: 2.1rem;
-  height: 2.1rem;
-  border-radius: 9px;
-  background:
-    radial-gradient(circle at 50% 38%, #e8d9a8 0 20%, transparent 21%),
-    linear-gradient(145deg, #3a6a4a, #0f1a16);
-  border: 1px solid rgba(212, 196, 138, 0.5);
-  flex-shrink: 0;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+.nav__logo-dot {
+  color: var(--logo-dot);
+  font-weight: 900;
+  margin-left: 0.02em;
 }
 
 .nav__tabs {
@@ -157,8 +146,11 @@
   .nav__drawer {
     display: none;
   }
-}
 
+  .nav__logo {
+    font-size: 2rem;
+  }
+}
 
 .nav__scrim {
   position: fixed;
