@@ -5,6 +5,11 @@
   --cream-soft: #efe6d4;
   --cream-deep: #e4d8c0;
   --paper: #fbf7ef;
+  /* Soft race-day turf / sage ground (non-Race pages + shell) */
+  --turf-soft: #e2eadc;
+  --turf-mid: #d5e0ce;
+  --turf-deep: #c5d4bc;
+  --sage: #d8e2d2;
   --ink: #142038;
   --ink-soft: #2a3a58;
   --navy: #142038;
@@ -24,8 +29,8 @@
   --radius-sm: 8px;
   --font-display: 'Fraunces', 'Cormorant Garamond', Georgia, serif;
   --font-body: 'Source Sans 3', 'IBM Plex Sans', system-ui, sans-serif;
-  --shadow-soft: 0 8px 28px rgba(20, 32, 56, 0.08);
-  --shadow-card: 0 4px 18px rgba(20, 32, 56, 0.07);
+  --shadow-soft: 0 8px 28px rgba(20, 32, 56, 0.1);
+  --shadow-card: 0 4px 20px rgba(20, 32, 56, 0.09);
   --border-gold: 1px solid rgba(201, 162, 39, 0.45);
   --border-ink: 1px solid rgba(20, 32, 56, 0.12);
   /* Legacy aliases used by Race HUD / 3D overlays */
@@ -59,13 +64,14 @@ body,
 
 body {
   font-family: var(--font-body);
-  background: var(--cream);
+  background: var(--turf-soft);
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
   background-image:
-    radial-gradient(ellipse 90% 55% at 50% -15%, rgba(201, 162, 39, 0.12), transparent 55%),
-    radial-gradient(ellipse 50% 40% at 100% 100%, rgba(139, 26, 43, 0.05), transparent 50%),
-    linear-gradient(180deg, var(--paper) 0%, var(--cream) 40%, var(--cream-soft) 100%);
+    radial-gradient(ellipse 90% 55% at 50% -15%, rgba(201, 162, 39, 0.1), transparent 55%),
+    radial-gradient(ellipse 55% 45% at 100% 100%, rgba(47, 122, 50, 0.08), transparent 50%),
+    radial-gradient(ellipse 40% 35% at 0% 80%, rgba(61, 143, 58, 0.07), transparent 45%),
+    linear-gradient(180deg, var(--sage) 0%, var(--turf-soft) 38%, var(--turf-mid) 100%);
 }
 
 /* Hide Netlify "Powered by" / HUD badge injected at the edge */
@@ -111,6 +117,7 @@ h3 {
   flex-direction: column;
   min-height: 100%;
   height: 100%;
+  background: transparent;
 }
 
 .main-content {
@@ -119,6 +126,7 @@ h3 {
   display: flex;
   flex-direction: column;
   position: relative;
+  background: transparent;
 }
 
 .panel {
@@ -286,6 +294,7 @@ h3 {
   flex: 1;
   overflow: auto;
   padding: 1.25rem 1rem 2rem;
+  background: transparent;
 }
 
 .view-hero {

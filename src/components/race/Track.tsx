@@ -415,84 +415,6 @@ function FurlongMarkers() {
   )
 }
 
-function InfieldTote() {
-  // Oversized cream program board — readable from full-oval camera (~52y / 48z)
-  return (
-    <group position={[0, 0, 0]} rotation={[-0.12, 0, 0]}>
-      <mesh position={[0, 1.4, 0]} castShadow>
-        <boxGeometry args={[2.2, 2.8, 1.2]} />
-        <meshStandardMaterial color="#e8e0d0" roughness={0.65} />
-      </mesh>
-      <mesh position={[0, 5.4, 0]} castShadow>
-        <boxGeometry args={[18, 6.4, 0.45]} />
-        <meshStandardMaterial color="#faf6ec" roughness={0.42} />
-      </mesh>
-      {/* Gold frame */}
-      <mesh position={[0, 8.7, 0.02]}>
-        <boxGeometry args={[18.6, 0.38, 0.6]} />
-        <meshStandardMaterial color="#c9a227" metalness={0.5} roughness={0.28} />
-      </mesh>
-      <mesh position={[0, 2.1, 0.02]}>
-        <boxGeometry args={[18.6, 0.32, 0.6]} />
-        <meshStandardMaterial color="#142038" roughness={0.45} />
-      </mesh>
-      <mesh position={[-9.15, 5.4, 0.02]}>
-        <boxGeometry args={[0.28, 6.4, 0.55]} />
-        <meshStandardMaterial color="#c9a227" metalness={0.45} roughness={0.3} />
-      </mesh>
-      <mesh position={[9.15, 5.4, 0.02]}>
-        <boxGeometry args={[0.28, 6.4, 0.55]} />
-        <meshStandardMaterial color="#c9a227" metalness={0.45} roughness={0.3} />
-      </mesh>
-      <Text
-        position={[0, 6.85, 0.28]}
-        fontSize={2.15}
-        color="#0f1c3a"
-        anchorX="center"
-        anchorY="middle"
-        outlineWidth={0.06}
-        outlineColor="#faf6ec"
-      >
-        DRBY
-      </Text>
-      <Text
-        position={[0, 5.15, 0.28]}
-        fontSize={1.05}
-        color="#1a2744"
-        anchorX="center"
-        anchorY="middle"
-        outlineWidth={0.025}
-        outlineColor="#faf6ec"
-      >
-        EVENING FEATURE
-      </Text>
-      <Text
-        position={[0, 3.75, 0.28]}
-        fontSize={0.92}
-        color="#0f1c3a"
-        anchorX="center"
-        anchorY="middle"
-        outlineWidth={0.02}
-        outlineColor="#faf6ec"
-      >
-        1 MILE  ·  DIRT
-      </Text>
-      <Text
-        position={[0, 5.4, -0.28]}
-        rotation={[0, Math.PI, 0]}
-        fontSize={1.8}
-        color="#0f1c3a"
-        anchorX="center"
-        anchorY="middle"
-        outlineWidth={0.05}
-        outlineColor="#faf6ec"
-      >
-        DRBY
-      </Text>
-    </group>
-  )
-}
-
 
 export function Track() {
   const dirtGeo = useMemo(
@@ -539,14 +461,19 @@ export function Track() {
 
   return (
     <group>
-      {/* Outer grounds — bright lawn apron */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.04, 0]} receiveShadow>
-        <planeGeometry args={[140, 110]} />
+      {/* Outer grounds — lush venue lawn (not road / asphalt) */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]} receiveShadow>
+        <planeGeometry args={[160, 130]} />
+        <meshStandardMaterial color="#3f8f3c" roughness={1} />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.03, 0]} receiveShadow>
+        <ringGeometry args={[25, 38, 72]} />
         <meshStandardMaterial color="#4a9a45" roughness={1} />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]} receiveShadow>
-        <ringGeometry args={[26, 34, 64]} />
-        <meshStandardMaterial color="#3f8a3c" roughness={1} />
+      {/* Deeper turf band past the outer rail toward the stands */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.015, 0]} receiveShadow>
+        <ringGeometry args={[24.2, 27.5, 72]} />
+        <meshStandardMaterial color="#2f7a32" roughness={0.95} />
       </mesh>
 
       {/* Sandy / tan dirt racing surface */}
@@ -579,16 +506,15 @@ export function Track() {
         <ringGeometry args={[4.2, 5.2, 40]} />
         <meshStandardMaterial color={HEDGE} roughness={0.95} />
       </mesh>
-      {/* Center ring under tote */}
-      <mesh position={[0, 0.1, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[2.4, 3.2, 40]} />
-        <meshStandardMaterial color={STONE} roughness={0.7} />
+      {/* Soft center lawn — open sightline, no infield board */}
+      <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <circleGeometry args={[3.6, 40]} />
+        <meshStandardMaterial color={TURF} roughness={0.9} />
       </mesh>
 
-      {/* Finish / start wire + furlong poles + infield tote */}
+      {/* Finish / start wire + furlong poles — open infield (no tote board) */}
       <FinishPoles />
       <FurlongMarkers />
-      <InfieldTote />
 
       {/* Twin Spires landmark */}
       <TwinSpire x={-3.2} z={-19.2} />
@@ -612,17 +538,41 @@ export function Track() {
         <meshStandardMaterial color={GOLD} metalness={0.5} roughness={0.3} />
       </mesh>
 
+      {/* Near grandstand apron — cream stone walk + turf (kills gray road stripe) */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 18.4]} receiveShadow>
+        <planeGeometry args={[44, 5.2]} />
+        <meshStandardMaterial color="#efe6d4" roughness={0.92} />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.025, 18.4]} receiveShadow>
+        <planeGeometry args={[42, 0.18]} />
+        <meshStandardMaterial color="#e0d4bc" roughness={0.88} />
+      </mesh>
+      {/* Turf strip just outside the near rail */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 16.35]} receiveShadow>
+        <planeGeometry args={[46, 1.35]} />
+        <meshStandardMaterial color="#3d8f3a" roughness={0.95} />
+      </mesh>
+      {/* Lawn filling bottom-of-frame past the stands (toward camera) */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 34]} receiveShadow>
+        <planeGeometry args={[90, 28]} />
+        <meshStandardMaterial color="#3a8a38" roughness={1} />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 42]} receiveShadow>
+        <planeGeometry args={[100, 18]} />
+        <meshStandardMaterial color="#2f7a32" roughness={1} />
+      </mesh>
+
       {/* Near grandstand — cream / white with columns */}
       <group position={[0, 0, 21.2]}>
-        {[0, 1, 2, 3, 4, 5, 6].map((row) => (
-          <mesh key={row} position={[0, 0.35 + row * 0.5, row * 0.62]} castShadow receiveShadow>
-            <boxGeometry args={[36 - row * 0.6, 0.28, 0.85]} />
+        {[0, 1, 2, 3, 4, 5, 6, 7].map((row) => (
+          <mesh key={row} position={[0, 0.35 + row * 0.48, row * 0.58]} castShadow receiveShadow>
+            <boxGeometry args={[38 - row * 0.55, 0.28, 0.85]} />
             <meshStandardMaterial color={row % 2 ? STONE : CREAM} roughness={0.75} />
           </mesh>
         ))}
-        <CrowdDots width={32} depth={3.8} rows={6} cols={28} baseY={0.35} baseZ={0.15} />
-        {[-15, -10, -5, 0, 5, 10, 15].map((x) => (
-          <group key={x} position={[x, 0, 1.2]}>
+        <CrowdDots width={34} depth={4.4} rows={7} cols={30} baseY={0.35} baseZ={0.12} />
+        {[-16, -11, -6, -2, 2, 6, 11, 16].map((x) => (
+          <group key={x} position={[x, 0, 1.4]}>
             <mesh position={[0, 2.35, 0]} castShadow>
               <cylinderGeometry args={[0.28, 0.32, 4.7, 10]} />
               <meshStandardMaterial color={COLUMN} roughness={0.55} />
@@ -637,23 +587,56 @@ export function Track() {
             </mesh>
           </group>
         ))}
-        <mesh position={[0, 5.5, 2.4]} castShadow>
-          <boxGeometry args={[38, 0.28, 8.5]} />
+        <mesh position={[0, 5.55, 2.8]} castShadow>
+          <boxGeometry args={[40, 0.28, 9.2]} />
           <meshStandardMaterial color={NAVY} roughness={0.55} />
         </mesh>
-        <mesh position={[0, 5.2, -0.9]}>
-          <boxGeometry args={[37.5, 0.35, 0.25]} />
+        <mesh position={[0, 5.25, -0.7]}>
+          <boxGeometry args={[39, 0.35, 0.25]} />
           <meshStandardMaterial color={GOLD} metalness={0.45} roughness={0.35} />
         </mesh>
-        <mesh position={[0, 2.6, 5.4]} castShadow>
-          <boxGeometry args={[37, 5.2, 0.5]} />
+        <mesh position={[0, 2.7, 6.2]} castShadow>
+          <boxGeometry args={[39, 5.4, 0.55]} />
           <meshStandardMaterial color={CREAM} roughness={0.7} />
+        </mesh>
+        <mesh position={[0, 0.55, -1.35]} castShadow receiveShadow>
+          <boxGeometry args={[40, 1.1, 0.45]} />
+          <meshStandardMaterial color={CREAM} roughness={0.7} />
+        </mesh>
+        <mesh position={[0, 1.15, -1.35]}>
+          <boxGeometry args={[40.2, 0.16, 0.5]} />
+          <meshStandardMaterial color={GOLD} metalness={0.4} roughness={0.35} />
         </mesh>
       </group>
 
-      <FlowerBed position={[-10, 0, 17.2]} width={8} />
-      <FlowerBed position={[10, 0, 17.2]} width={8} />
-      <FlowerBed position={[0, 0, 17.2]} width={6} />
+      {/* Extended lower seating / patio beyond main stand — fills bottom of frame */}
+      <group position={[0, 0, 28.5]}>
+        {[0, 1, 2, 3].map((row) => (
+          <mesh key={row} position={[0, 0.22 + row * 0.38, row * 0.55]} castShadow receiveShadow>
+            <boxGeometry args={[44 - row * 0.4, 0.22, 0.75]} />
+            <meshStandardMaterial color={row % 2 ? '#e8e0d0' : '#f3eee3'} roughness={0.8} />
+          </mesh>
+        ))}
+        <CrowdDots width={40} depth={2.2} rows={4} cols={34} baseY={0.22} baseZ={0.1} />
+        <mesh position={[0, 0.06, 2.4]} receiveShadow>
+          <boxGeometry args={[48, 0.12, 4.5]} />
+          <meshStandardMaterial color="#efe6d4" roughness={0.95} />
+        </mesh>
+      </group>
+
+      {/* Landscaping along apron — hedges + blooms (outside oval, no clip) */}
+      <FlowerBed position={[-12, 0, 16.9]} width={9} />
+      <FlowerBed position={[12, 0, 16.9]} width={9} />
+      <FlowerBed position={[0, 0, 16.9]} width={7} />
+      <FlowerBed position={[-18, 0, 19.6]} width={6} />
+      <FlowerBed position={[18, 0, 19.6]} width={6} />
+      <HedgeBox position={[-20, 0.4, 17.6]} size={[8, 0.8, 0.7]} />
+      <HedgeBox position={[20, 0.4, 17.6]} size={[8, 0.8, 0.7]} />
+      <HedgeBox position={[0, 0.35, 20.15]} size={[36, 0.7, 0.55]} />
+      <HedgeBox position={[-22, 0.45, 24]} size={[0.7, 0.9, 10]} />
+      <HedgeBox position={[22, 0.45, 24]} size={[0.7, 0.9, 10]} />
+      <FlowerBed position={[-8, 0, 31.2]} width={10} />
+      <FlowerBed position={[8, 0, 31.2]} width={10} />
 
       <HedgeBox position={[-8, 0.35, 0]} size={[1.2, 0.7, 3.5]} />
       <HedgeBox position={[8, 0.35, 0]} size={[1.2, 0.7, 3.5]} />
