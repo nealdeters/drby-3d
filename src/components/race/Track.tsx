@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
+import { Text } from '@react-three/drei'
 import { TRACK, ovalPoint } from './trackMath'
 
 const DIRT = '#d2b48c'
@@ -219,6 +220,286 @@ function FlowerBed({ position, width }: { position: [number, number, number]; wi
   )
 }
 
+
+function SignBoard({
+  position,
+  rotation = [0, 0, 0],
+  width,
+  height,
+  label,
+  sublabel,
+  face = 'cream',
+}: {
+  position: [number, number, number]
+  rotation?: [number, number, number]
+  width: number
+  height: number
+  label: string
+  sublabel?: string
+  face?: 'cream' | 'green' | 'navy'
+}) {
+  const bg = face === 'cream' ? '#f7f2e6' : face === 'green' ? '#1e5c2a' : '#142038'
+  const fg = face === 'cream' ? '#142038' : '#f7f2e6'
+  const fontSize = Math.min(height * 0.42, width / Math.max(label.length * 0.55, 1))
+  return (
+    <group position={position} rotation={rotation}>
+      <mesh castShadow receiveShadow position={[0, 0, 0]}>
+        <boxGeometry args={[width, height, 0.12]} />
+        <meshStandardMaterial color={bg} roughness={0.55} />
+      </mesh>
+      {/* Navy / gold trim */}
+      <mesh position={[0, height * 0.5 - 0.04, 0.02]}>
+        <boxGeometry args={[width, 0.08, 0.04]} />
+        <meshStandardMaterial color="#c9a227" metalness={0.4} roughness={0.35} />
+      </mesh>
+      <mesh position={[0, -height * 0.5 + 0.04, 0.02]}>
+        <boxGeometry args={[width, 0.08, 0.04]} />
+        <meshStandardMaterial color="#c9a227" metalness={0.4} roughness={0.35} />
+      </mesh>
+      <Text
+        position={[0, sublabel ? height * 0.12 : 0, 0.08]}
+        fontSize={fontSize}
+        color={fg}
+        anchorX="center"
+        anchorY="middle"
+        outlineWidth={fontSize * 0.04}
+        outlineColor={face === 'cream' ? '#f7f2e6' : '#0a1528'}
+        maxWidth={width * 0.92}
+      >
+        {label}
+      </Text>
+      {sublabel ? (
+        <Text
+          position={[0, -height * 0.28, 0.08]}
+          fontSize={fontSize * 0.45}
+          color={fg}
+          anchorX="center"
+          anchorY="middle"
+          fillOpacity={0.9}
+        >
+          {sublabel}
+        </Text>
+      ) : null}
+    </group>
+  )
+}
+
+function PostMarker({
+  progress,
+  label,
+  sublabel,
+  face = 'cream',
+}: {
+  progress: number
+  label: string
+  sublabel?: string
+  face?: 'cream' | 'green' | 'navy'
+}) {
+  const { pos, rotY, boardPos } = useMemo(() => {
+    const outer = ovalPoint(progress, TRACK.outerRx + 1.35, TRACK.outerRz + 1.1)
+    // Face inward toward track center
+    const inward = new THREE.Vector3(-outer.x, 0, -outer.z).normalize()
+    const rotY = Math.atan2(inward.x, inward.z)
+    return {
+      pos: outer,
+      rotY,
+      boardPos: [outer.x, 2.45, outer.z] as [number, number, number],
+    }
+  }, [progress])
+
+  return (
+    <group>
+      <mesh position={[pos.x, 1.25, pos.z]} castShadow>
+        <cylinderGeometry args={[0.14, 0.16, 2.5, 8]} />
+        <meshStandardMaterial color="#f5f5f0" metalness={0.15} roughness={0.4} />
+      </mesh>
+      <mesh position={[pos.x, 0.12, pos.z]}>
+        <cylinderGeometry args={[0.28, 0.32, 0.24, 8]} />
+        <meshStandardMaterial color="#142038" roughness={0.6} />
+      </mesh>
+      <SignBoard
+        position={boardPos}
+        rotation={[0, rotY, 0]}
+        width={4.2}
+        height={1.9}
+        label={label}
+        sublabel={sublabel}
+        face={face}
+      />
+    </group>
+  )
+}
+
+function FinishPoles() {
+  const finish = useMemo(() => ovalPoint(0.5, TRACK.centerRx, TRACK.centerRz), [])
+  const finishInner = useMemo(() => ovalPoint(0.5, TRACK.innerRx + 0.15, TRACK.innerRz + 0.1), [])
+  const finishOuter = useMemo(() => ovalPoint(0.5, TRACK.outerRx - 0.15, TRACK.outerRz - 0.1), [])
+  const gateSpan = Math.hypot(finishOuter.x - finishInner.x, finishOuter.z - finishInner.z)
+  const mid = finish
+  // Board faces the grandstand (+Z) — readable from default camera
+  return (
+    <group>
+      <mesh position={[finish.x, 0.04, finish.z]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[0.7, gateSpan]} />
+        <meshStandardMaterial color="#ffffff" roughness={0.7} />
+      </mesh>
+      {/* Checker accent stripe */}
+      <mesh position={[finish.x + 0.35, 0.045, finish.z]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[0.25, gateSpan]} />
+        <meshStandardMaterial color="#142038" roughness={0.7} />
+      </mesh>
+      {[finishInner, finishOuter].map((p, i) => (
+        <group key={i}>
+          <mesh position={[p.x, 1.35, p.z]} castShadow>
+            <boxGeometry args={[0.28, 2.7, 0.28]} />
+            <meshStandardMaterial color="#f7f2e6" roughness={0.45} />
+          </mesh>
+          <mesh position={[p.x, 2.75, p.z]}>
+            <boxGeometry args={[0.4, 0.2, 0.4]} />
+            <meshStandardMaterial color="#c9a227" metalness={0.45} roughness={0.3} />
+          </mesh>
+          {/* Red/white bands */}
+          {[0.5, 1.1, 1.7].map((y) => (
+            <mesh key={y} position={[p.x, y, p.z]}>
+              <boxGeometry args={[0.3, 0.22, 0.3]} />
+              <meshStandardMaterial color="#b02028" roughness={0.5} />
+            </mesh>
+          ))}
+        </group>
+      ))}
+      <mesh position={[mid.x, 2.85, mid.z]} castShadow>
+        <boxGeometry args={[0.16, 0.16, gateSpan + 0.2]} />
+        <meshStandardMaterial color="#142038" metalness={0.2} roughness={0.4} />
+      </mesh>
+      {/* FINISH — large, cream on navy, faces camera/grandstand */}
+      <SignBoard
+        position={[mid.x, 3.55, mid.z + 0.2]}
+        rotation={[0, 0, 0]}
+        width={7.5}
+        height={2.0}
+        label="FINISH"
+        sublabel="START / WIRE"
+        face="navy"
+      />
+      {/* Mirror board facing backstretch */}
+      <SignBoard
+        position={[mid.x, 3.55, mid.z - 0.2]}
+        rotation={[0, Math.PI, 0]}
+        width={7.5}
+        height={2.0}
+        label="FINISH"
+        sublabel="START / WIRE"
+        face="navy"
+      />
+    </group>
+  )
+}
+
+function FurlongMarkers() {
+  // One-mile oval (8 furlongs). Finish/wire at progress 0.5.
+  // Markers show furlongs to the wire; poles get race-day labels.
+  const markers = useMemo(() => {
+    const poleLabel: Record<number, { label: string; sub: string }> = {
+      2: { label: '¼', sub: 'POLE' },
+      4: { label: '½', sub: 'POLE' },
+      6: { label: '¾', sub: 'POLE' },
+    }
+    const items: { progress: number; label: string; sub?: string; face: 'cream' | 'green' }[] = []
+    for (let f = 1; f <= 7; f++) {
+      let progress = 0.5 - f / 8
+      if (progress < 0) progress += 1
+      const pole = poleLabel[f]
+      items.push({
+        progress,
+        label: pole ? pole.label : `${f}F`,
+        sub: pole ? pole.sub : f === 1 ? 'TO GO' : `${f} FURLONGS`,
+        face: f % 2 === 0 ? 'green' : 'cream',
+      })
+    }
+    return items
+  }, [])
+
+  return (
+    <group>
+      {markers.map((m) => (
+        <PostMarker
+          key={`${m.label}-${m.progress}`}
+          progress={m.progress}
+          label={m.label}
+          sublabel={m.sub}
+          face={m.face}
+        />
+      ))}
+    </group>
+  )
+}
+
+function InfieldTote() {
+  return (
+    <group position={[0, 0, 0]}>
+      {/* Pedestal */}
+      <mesh position={[0, 1.1, 0]} castShadow>
+        <boxGeometry args={[1.2, 2.2, 0.8]} />
+        <meshStandardMaterial color="#e8e0d0" roughness={0.65} />
+      </mesh>
+      {/* Main board — cream face, navy type, gold trim */}
+      <mesh position={[0, 4.0, 0]} castShadow>
+        <boxGeometry args={[12, 4.2, 0.4]} />
+        <meshStandardMaterial color="#f7f2e6" roughness={0.5} />
+      </mesh>
+      <mesh position={[0, 6.2, 0]}>
+        <boxGeometry args={[12.4, 0.28, 0.55]} />
+        <meshStandardMaterial color="#c9a227" metalness={0.45} roughness={0.3} />
+      </mesh>
+      <mesh position={[0, 1.85, 0]}>
+        <boxGeometry args={[12.4, 0.22, 0.55]} />
+        <meshStandardMaterial color="#142038" roughness={0.5} />
+      </mesh>
+      <Text
+        position={[0, 5.0, 0.26]}
+        fontSize={1.15}
+        color="#142038"
+        anchorX="center"
+        anchorY="middle"
+        outlineWidth={0.03}
+        outlineColor="#f7f2e6"
+      >
+        DRBY
+      </Text>
+      <Text
+        position={[0, 3.9, 0.26]}
+        fontSize={0.62}
+        color="#1e5c2a"
+        anchorX="center"
+        anchorY="middle"
+      >
+        EVENING FEATURE
+      </Text>
+      <Text
+        position={[0, 2.85, 0.26]}
+        fontSize={0.5}
+        color="#142038"
+        anchorX="center"
+        anchorY="middle"
+      >
+        1 MILE  ·  DIRT
+      </Text>
+      {/* Reverse face for far side */}
+      <Text
+        position={[0, 4.2, -0.26]}
+        rotation={[0, Math.PI, 0]}
+        fontSize={1.0}
+        color="#142038"
+        anchorX="center"
+        anchorY="middle"
+      >
+        DRBY
+      </Text>
+    </group>
+  )
+}
+
+
 export function Track() {
   const dirtGeo = useMemo(
     () => ringGeometry(TRACK.innerRx, TRACK.innerRz, TRACK.outerRx, TRACK.outerRz, 112),
@@ -262,11 +543,6 @@ export function Track() {
     [],
   )
 
-  const finish = useMemo(() => ovalPoint(0.5, TRACK.centerRx, TRACK.centerRz), [])
-  const finishInner = useMemo(() => ovalPoint(0.5, TRACK.innerRx + 0.3, TRACK.innerRz + 0.2), [])
-  const finishOuter = useMemo(() => ovalPoint(0.5, TRACK.outerRx - 0.3, TRACK.outerRz - 0.2), [])
-  const gateSpan = Math.hypot(finishOuter.x - finishInner.x, finishOuter.z - finishInner.z)
-
   return (
     <group>
       {/* Outer grounds — bright lawn apron */}
@@ -309,38 +585,16 @@ export function Track() {
         <ringGeometry args={[4.2, 5.2, 40]} />
         <meshStandardMaterial color={HEDGE} roughness={0.95} />
       </mesh>
-      <mesh position={[0, 0.12, 0]}>
-        <cylinderGeometry args={[2.0, 2.25, 0.2, 28]} />
+      {/* Center ring under tote */}
+      <mesh position={[0, 0.1, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[2.4, 3.2, 40]} />
         <meshStandardMaterial color={STONE} roughness={0.7} />
       </mesh>
-      <mesh position={[0, 0.24, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[1.55, 28]} />
-        <meshStandardMaterial color={GOLD} metalness={0.45} roughness={0.35} />
-      </mesh>
-      <mesh position={[0, 0.26, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[1.15, 1.45, 28]} />
-        <meshStandardMaterial color={NAVY} roughness={0.5} />
-      </mesh>
 
-      {/* Finish stripe + gate */}
-      <group>
-        <mesh position={[finish.x, 0.035, finish.z]} rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[0.55, gateSpan]} />
-          <meshStandardMaterial color="#ffffff" roughness={0.75} />
-        </mesh>
-        <mesh position={[finishInner.x, 0.95, finishInner.z]} castShadow>
-          <boxGeometry args={[0.2, 1.9, 0.2]} />
-          <meshStandardMaterial color={CREAM} metalness={0.15} roughness={0.4} />
-        </mesh>
-        <mesh position={[finishOuter.x, 0.95, finishOuter.z]} castShadow>
-          <boxGeometry args={[0.2, 1.9, 0.2]} />
-          <meshStandardMaterial color={CREAM} metalness={0.15} roughness={0.4} />
-        </mesh>
-        <mesh position={[finish.x, 1.85, finish.z]} castShadow>
-          <boxGeometry args={[0.14, 0.14, gateSpan]} />
-          <meshStandardMaterial color={NAVY} metalness={0.2} roughness={0.45} />
-        </mesh>
-      </group>
+      {/* Finish / start wire + furlong poles + infield tote */}
+      <FinishPoles />
+      <FurlongMarkers />
+      <InfieldTote />
 
       {/* Twin Spires landmark */}
       <TwinSpire x={-3.2} z={-19.2} />

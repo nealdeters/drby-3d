@@ -7,25 +7,30 @@ import { HorseMesh } from './Horse'
 import { Track } from './Track'
 import { createFieldState, stepField, type HorseSimState } from './trackMath'
 
+/**
+ * High grandstand / slight top-¾ overhead.
+ * Oval outer extents ~±24 X and ~±15 Z; stands/spires push the frame to
+ * roughly X±32 and Z −24…+30. Camera must sit far/high enough that both
+ * straights and both turns stay in a 1280×800 (and 1920×1080) viewport.
+ */
 function GrandstandCamera() {
   const cam = useRef<THREE.PerspectiveCamera>(null)
   useFrame(({ clock }) => {
     if (!cam.current) return
     const t = clock.getElapsedTime()
-    // High grandstand / slight top-down: full oval + margin in frame
-    cam.current.position.x = Math.sin(t * 0.1) * 0.55
-    cam.current.position.y = 34 + Math.sin(t * 0.15) * 0.15
-    cam.current.position.z = 42 + Math.cos(t * 0.08) * 0.3
-    cam.current.lookAt(0, 0.2, -1.2)
+    cam.current.position.x = Math.sin(t * 0.08) * 0.8
+    cam.current.position.y = 52 + Math.sin(t * 0.12) * 0.2
+    cam.current.position.z = 48 + Math.cos(t * 0.07) * 0.35
+    cam.current.lookAt(0, 0.15, -0.5)
   })
   return (
     <PerspectiveCamera
       ref={cam}
       makeDefault
-      fov={42}
+      fov={50}
       near={0.1}
-      far={400}
-      position={[0, 34, 42]}
+      far={500}
+      position={[0, 52, 48]}
     />
   )
 }
@@ -58,8 +63,8 @@ export function RaceScene() {
   return (
     <Canvas shadows dpr={[1, 1.75]} gl={{ antialias: true, alpha: false }}>
       <color attach="background" args={['#87b8e8']} />
-      {/* Soft daylight haze only — no dark mud void */}
-      <fog attach="fog" args={['#c5daf0', 95, 220]} />
+      {/* Soft daylight haze — starts past the far rail so the oval stays clear */}
+      <fog attach="fog" args={['#c8dcf0', 140, 320]} />
       <GrandstandCamera />
       <Sky
         distance={450000}
@@ -80,11 +85,11 @@ export function RaceScene() {
         color="#ffe8b8"
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
-        shadow-camera-far={120}
-        shadow-camera-left={-45}
-        shadow-camera-right={45}
-        shadow-camera-top={45}
-        shadow-camera-bottom={-45}
+        shadow-camera-far={140}
+        shadow-camera-left={-55}
+        shadow-camera-right={55}
+        shadow-camera-top={55}
+        shadow-camera-bottom={-55}
         shadow-bias={-0.0002}
       />
       <directionalLight position={[-20, 18, -12]} intensity={0.35} color="#a8c8f0" />

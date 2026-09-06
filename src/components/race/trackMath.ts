@@ -21,7 +21,9 @@ export function ovalPoint(
 ): THREE.Vector3 {
   const t = progress * Math.PI * 2
   // t=0: far backstretch (-Z); t=0.5: near stretch toward grandstand (+Z)
-  const x = Math.sin(t) * radiusX
+  // Negative X sin → counter-clockwise when viewed from above (US / Churchill standard).
+  // progress↑: far → left (−X) → near → right (+X) → far
+  const x = -Math.sin(t) * radiusX
   const z = -Math.cos(t) * radiusZ
   return new THREE.Vector3(x, 0, z)
 }
@@ -58,7 +60,7 @@ export function trackTangent(progress: number, radialOffset: number): THREE.Vect
 /** True on the banked ends of the oval (left/right turns). */
 export function isOnTurn(progress: number): boolean {
   const p = ((progress % 1) + 1) % 1
-  // Turns near progress 0.25 (right) and 0.75 (left)
+  // Turns near progress 0.25 (left / −X) and 0.75 (right / +X) in CCW layout
   const d1 = Math.abs(p - 0.25)
   const d2 = Math.abs(p - 0.75)
   return Math.min(d1, d2) < 0.14

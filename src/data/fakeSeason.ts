@@ -3,6 +3,8 @@ export type Horse = {
   name: string
   number: number
   jersey: string
+  /** Stable coat color for the horse mesh */
+  coat: string
   jockey: string
   speedBias: number
 }
@@ -43,14 +45,14 @@ export type Season = {
 }
 
 export const HORSES: Horse[] = [
-  { id: 'h1', name: 'Copper Comet', number: 1, jersey: '#c44536', jockey: 'R. Hale', speedBias: 1.02 },
-  { id: 'h2', name: 'Midnight Ledger', number: 2, jersey: '#2c3e6b', jockey: 'S. Quinn', speedBias: 0.98 },
-  { id: 'h3', name: 'Brass Thunder', number: 3, jersey: '#c4a574', jockey: 'M. Vega', speedBias: 1.05 },
-  { id: 'h4', name: 'Dusty Crown', number: 4, jersey: '#5b8c5a', jockey: 'A. Moss', speedBias: 0.96 },
-  { id: 'h5', name: 'Ember Lane', number: 5, jersey: '#d4552a', jockey: 'J. Park', speedBias: 1.01 },
-  { id: 'h6', name: 'Silver Spire', number: 6, jersey: '#8a9bb0', jockey: 'T. Cole', speedBias: 0.99 },
-  { id: 'h7', name: 'Oakridge Gale', number: 7, jersey: '#6b4423', jockey: 'L. Drew', speedBias: 1.03 },
-  { id: 'h8', name: 'Velvet Circuit', number: 8, jersey: '#7b3f6e', jockey: 'K. Singh', speedBias: 0.97 },
+  { id: 'h1', name: 'Copper Comet', number: 1, coat: '#8a4f2a', jersey: '#c44536', jockey: 'R. Hale', speedBias: 1.02 },
+  { id: 'h2', name: 'Midnight Ledger', number: 2, coat: '#1a1412', jersey: '#2c3e6b', jockey: 'S. Quinn', speedBias: 0.98 },
+  { id: 'h3', name: 'Brass Thunder', number: 3, coat: '#b08948', jersey: '#c4a574', jockey: 'M. Vega', speedBias: 1.05 },
+  { id: 'h4', name: 'Dusty Crown', number: 4, coat: '#6b5238', jersey: '#5b8c5a', jockey: 'A. Moss', speedBias: 0.96 },
+  { id: 'h5', name: 'Ember Lane', number: 5, coat: '#9a3b1e', jersey: '#d4552a', jockey: 'J. Park', speedBias: 1.01 },
+  { id: 'h6', name: 'Silver Spire', number: 6, coat: '#9aa0a8', jersey: '#8a9bb0', jockey: 'T. Cole', speedBias: 0.99 },
+  { id: 'h7', name: 'Oakridge Gale', number: 7, coat: '#4a3220', jersey: '#6b4423', jockey: 'L. Drew', speedBias: 1.03 },
+  { id: 'h8', name: 'Velvet Circuit', number: 8, coat: '#3d2a28', jersey: '#7b3f6e', jockey: 'K. Singh', speedBias: 0.97 },
 ]
 
 export const TRACKS: Track[] = [
