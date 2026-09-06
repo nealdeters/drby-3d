@@ -12,7 +12,7 @@ const ASPHALT_WEAR = '#2a2f38'
 const RAIL = '#f5f5f0'
 const TURF = '#3d8f3a'
 const TURF_DEEP = '#2f7a32'
-const TURF_RACE = '#3a9a3a'
+const TURF_RACE = '#2e8b2e'
 const TURF_RACE_WEAR = '#2f7a32'
 const CREAM = '#f3eee3'
 const STONE = '#e8e0d0'
@@ -51,7 +51,8 @@ function ringGeometry(
     const b = a + 1
     const c = a + 2
     const d = a + 3
-    indices.push(a, c, b, b, c, d)
+    // CCW from +Y so normals face up (grandstand camera); was a,c,b → −Y / culled
+    indices.push(a, b, c, b, d, c)
   }
   const geo = new THREE.BufferGeometry()
   geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
@@ -533,38 +534,40 @@ export function Track({ surface = 'dirt' }: { surface?: TrackSurface }) {
         <meshStandardMaterial color="#2f7a32" roughness={0.95} />
       </mesh>
 
-      {/* Racing surface — dirt / asphalt / grass by track type */}
-      <mesh geometry={dirtGeo} receiveShadow>
+      {/* Racing surface — above lawn plane; DoubleSide + +Y normals so strip stays visible */}
+      <mesh geometry={dirtGeo} position={[0, 0.03, 0]} receiveShadow>
         <meshStandardMaterial
           color={raceColors.base}
           roughness={raceColors.roughness}
           metalness={raceColors.metalness}
           emissive={raceColors.emissive}
           emissiveIntensity={raceColors.emissiveIntensity}
+          side={THREE.DoubleSide}
         />
       </mesh>
-      <mesh geometry={wearGeo} position={[0, 0.005, 0]} receiveShadow>
+      <mesh geometry={wearGeo} position={[0, 0.035, 0]} receiveShadow>
         <meshStandardMaterial
           color={raceColors.wear}
           roughness={1}
           transparent
           opacity={raceColors.wearOpacity}
+          side={THREE.DoubleSide}
         />
       </mesh>
 
-      {/* Crisp white rails */}
-      <mesh geometry={outerRailGeo} position={[0, 0.05, 0]}>
-        <meshStandardMaterial color={RAIL} metalness={0.2} roughness={0.3} />
+      {/* Crisp white rails — above raised racing strip */}
+      <mesh geometry={outerRailGeo} position={[0, 0.08, 0]}>
+        <meshStandardMaterial color={RAIL} metalness={0.2} roughness={0.3} side={THREE.DoubleSide} />
       </mesh>
-      <mesh geometry={innerRailGeo} position={[0, 0.05, 0]}>
-        <meshStandardMaterial color={RAIL} metalness={0.2} roughness={0.3} />
+      <mesh geometry={innerRailGeo} position={[0, 0.08, 0]}>
+        <meshStandardMaterial color={RAIL} metalness={0.2} roughness={0.3} side={THREE.DoubleSide} />
       </mesh>
       <RailPosts rx={TRACK.outerRx + 0.12} rz={TRACK.outerRz + 0.1} count={60} />
       <RailPosts rx={TRACK.innerRx - 0.12} rz={TRACK.innerRz - 0.1} count={44} />
 
-      {/* Bright manicured infield turf */}
-      <mesh geometry={infieldGeo} position={[0, 0.015, 0]} receiveShadow>
-        <meshStandardMaterial color={TURF} roughness={0.88} />
+      {/* Bright manicured infield turf (inside inner rail only) */}
+      <mesh geometry={infieldGeo} position={[0, 0.02, 0]} receiveShadow>
+        <meshStandardMaterial color={TURF} roughness={0.88} side={THREE.DoubleSide} />
       </mesh>
       <mesh position={[0, 0.04, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <circleGeometry args={[5.5, 40]} />

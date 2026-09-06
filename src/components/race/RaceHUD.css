@@ -168,9 +168,9 @@
   color: var(--cream);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.26);
   max-width: 100%;
-  /* Sit just above the stands — lift ~40px from seat overlap */
+  /* Sit above the stands — lift ~90px from original bottom */
   margin-top: auto;
-  transform: translateY(-40px);
+  transform: translateY(-90px);
   width: 100%;
 }
 
@@ -297,9 +297,9 @@
   .race-hud__side {
     display: flex;
     margin-left: 0;
-    /* Bottom-right just above grandstand — lift ~40px from seat overlap */
+    /* Bottom-right above grandstand — lift ~90px from original bottom */
     align-self: flex-end;
     margin-top: auto;
-    transform: translateY(-40px);
+    transform: translateY(-90px);
   }
 }
