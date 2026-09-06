@@ -1,35 +1,32 @@
-import { useMemo, useRef } from 'react'
+import { useRef, type MutableRefObject } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Billboard, Text } from '@react-three/drei'
 import * as THREE from 'three'
 import type { Horse as HorseData } from '../../data/fakeSeason'
-import { laneProgress, laneRadii, ovalPoint, ovalTangent } from './trackMath'
+import type { HorseSimState } from './trackMath'
+import { trackPoint, trackTangent } from './trackMath'
 
 type Props = {
   horse: HorseData
-  lane: number
-  lanes: number
-  /** Shared race clock 0–1 looping */
-  getProgress: () => number
+  index: number
+  /** Shared mutable field state — read by index each frame */
+  fieldRef: MutableRefObject<HorseSimState[]>
 }
 
-export function HorseMesh({ horse, lane, lanes, getProgress }: Props) {
+export function HorseMesh({ horse, index, fieldRef }: Props) {
   const group = useRef<THREE.Group>(null)
   const legPhase = useRef(Math.random() * Math.PI * 2)
-  const { rx, rz } = useMemo(() => laneRadii(lane, lanes), [lane, lanes])
 
   useFrame((_, dt) => {
     if (!group.current) return
-    const p = laneProgress(getProgress() * horse.speedBias, lane, lanes)
-    const pos = ovalPoint(p, rx, rz)
-    const tan = ovalTangent(p, rx, rz)
-    group.current.position.set(pos.x, 0.35, pos.z)
-    const yaw = Math.atan2(tan.x, tan.z)
-    group.current.rotation.y = yaw
+    const s = fieldRef.current[index]
+    if (!s) return
 
-    // Simple gallop bob
-    legPhase.current += dt * 14
-    group.current.position.y = 0.35 + Math.sin(legPhase.current) * 0.06
+    const pos = trackPoint(s.progress, s.radial)
+    const tan = trackTangent(s.progress, s.radial)
+    legPhase.current += dt * (12 + s.pace * 3)
+    group.current.position.set(pos.x, 0.35 + Math.sin(legPhase.current) * 0.06, pos.z)
+    group.current.rotation.y = Math.atan2(tan.x, tan.z)
   })
 
   return (
