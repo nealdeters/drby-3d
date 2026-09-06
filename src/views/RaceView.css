@@ -1,0 +1,17 @@
+.race-view {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  background: #0c0907;
+}
+
+.race-view__canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.race-view__canvas canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
