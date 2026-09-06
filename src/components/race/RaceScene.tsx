@@ -10,18 +10,33 @@ import { createFieldState, stepField, type HorseSimState } from './trackMath'
 /**
  * High grandstand / slight top-¾ overhead.
  * Oval outer extents ~±24 X and ~±15 Z; stands/spires push the frame to
- * roughly X±32 and Z −24…+30. Camera must sit far/high enough that both
- * straights and both turns stay in a 1280×800 (and 1920×1080) viewport.
+ * roughly X±32 and Z −24…+30. Landscape/desktop keeps the original
+ * framing; portrait/narrow aspect pulls back, raises, and widens FOV so
+ * both turns (±outerRx) plus horse rail margin stay inside the viewport.
  */
 function GrandstandCamera() {
   const cam = useRef<THREE.PerspectiveCamera>(null)
-  useFrame(({ clock }) => {
+  useFrame(({ clock, size }) => {
     if (!cam.current) return
     const t = clock.getElapsedTime()
+    const aspect = size.width / Math.max(size.height, 1)
+    // 0 at square/landscape, 1 at typical phone portrait (~0.45)
+    const narrow = THREE.MathUtils.clamp((1 - aspect) / 0.55, 0, 1)
+
+    const baseY = 52 + narrow * 20
+    const baseZ = 48 + narrow * 28
+    const fov = 50 + narrow * 16
+    const lookZ = -0.5 + narrow * 0.4
+
+    if (Math.abs(cam.current.fov - fov) > 0.01) {
+      cam.current.fov = fov
+      cam.current.updateProjectionMatrix()
+    }
+
     cam.current.position.x = Math.sin(t * 0.08) * 0.8
-    cam.current.position.y = 52 + Math.sin(t * 0.12) * 0.2
-    cam.current.position.z = 48 + Math.cos(t * 0.07) * 0.35
-    cam.current.lookAt(0, 0.15, -0.5)
+    cam.current.position.y = baseY + Math.sin(t * 0.12) * 0.2
+    cam.current.position.z = baseZ + Math.cos(t * 0.07) * 0.35
+    cam.current.lookAt(0, 0.15, lookZ)
   })
   return (
     <PerspectiveCamera
