@@ -20,15 +20,33 @@
   align-items: flex-end;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.9rem 1.1rem;
-  background: linear-gradient(165deg, rgba(31, 22, 16, 0.92), rgba(22, 16, 12, 0.88));
-  backdrop-filter: blur(8px);
+  padding: 0.95rem 1.2rem;
+  background: linear-gradient(
+    165deg,
+    rgba(245, 240, 230, 0.94),
+    rgba(235, 228, 212, 0.9)
+  );
+  border: 1px solid rgba(201, 162, 39, 0.45);
+  backdrop-filter: blur(10px);
+  color: var(--navy);
 }
 
 .race-hud__top h2 {
   margin-top: 0.35rem;
-  font-size: 1.45rem;
-  color: var(--brass-bright);
+  font-size: 1.55rem;
+  color: var(--navy);
+  font-family: var(--font-display);
+  letter-spacing: 0.03em;
+}
+
+.race-hud__top .muted {
+  color: #5a6a82;
+}
+
+.race-hud__top .badge {
+  background: rgba(139, 26, 43, 0.12);
+  border-color: rgba(139, 26, 43, 0.35);
+  color: #8b1a2b;
 }
 
 .race-hud__clock {
@@ -40,8 +58,8 @@
 
 .race-hud__clock strong {
   font-family: var(--font-display);
-  font-size: 2rem;
-  color: var(--brass-bright);
+  font-size: 2.1rem;
+  color: var(--navy);
   letter-spacing: 0.06em;
 }
 
@@ -50,8 +68,36 @@
   flex-direction: column;
   max-height: 100%;
   overflow: hidden;
-  background: linear-gradient(165deg, rgba(31, 22, 16, 0.94), rgba(22, 16, 12, 0.9));
-  backdrop-filter: blur(8px);
+  background: linear-gradient(
+    165deg,
+    rgba(245, 240, 230, 0.95),
+    rgba(235, 228, 212, 0.92)
+  );
+  border: 1px solid rgba(201, 162, 39, 0.45);
+  backdrop-filter: blur(10px);
+  color: var(--navy);
+}
+
+.race-hud__side .panel-header {
+  border-bottom-color: rgba(15, 28, 58, 0.12);
+}
+
+.race-hud__side .panel-header h2 {
+  color: var(--navy);
+}
+
+.race-hud__side .badge {
+  background: rgba(201, 162, 39, 0.18);
+  border-color: rgba(201, 162, 39, 0.45);
+  color: #8a7020;
+}
+
+.race-hud__side .muted {
+  color: #5a6a82;
+}
+
+.race-hud__side strong {
+  color: var(--navy);
 }
 
 .race-hud__field {
@@ -83,7 +129,7 @@
 
 .race-hud__next {
   padding: 0.85rem 1.25rem 1.1rem;
-  border-top: 1px solid rgba(196, 165, 116, 0.2);
+  border-top: 1px solid rgba(15, 28, 58, 0.12);
 }
 
 @media (min-width: 900px) {

@@ -1,8 +1,6 @@
 import { useState } from 'react'
 import { NavBar } from './components/layout/NavBar'
 import { useView } from './hooks/useView'
-import { AdminView } from './views/AdminView'
-import { ProfileView } from './views/ProfileView'
 import { RaceView } from './views/RaceView'
 import { ScheduleView } from './views/ScheduleView'
 import { SeasonsView } from './views/SeasonsView'
@@ -17,7 +15,10 @@ export default function App() {
     <div className="app-shell">
       <NavBar
         view={view}
-        onNavigate={setView}
+        onNavigate={(v) => {
+          setView(v)
+          setMenuOpen(false)
+        }}
         menuOpen={menuOpen}
         onToggleMenu={() => setMenuOpen((o) => !o)}
       />
@@ -27,8 +28,6 @@ export default function App() {
         {view === 'standings' && <StandingsView />}
         {view === 'seasons' && <SeasonsView />}
         {view === 'tracks' && <TracksView />}
-        {view === 'profile' && <ProfileView />}
-        {view === 'admin' && <AdminView />}
       </main>
     </div>
   )

@@ -41,12 +41,6 @@ export function NavBar({ view, onNavigate, menuOpen, onToggleMenu }: Props) {
       </nav>
 
       <div className="nav__actions">
-        <button type="button" className="nav__ghost" onClick={() => onNavigate('profile')}>
-          Profile
-        </button>
-        <button type="button" className="nav__ghost" onClick={() => onNavigate('admin')}>
-          Admin
-        </button>
         <button
           type="button"
           className="nav__burger"
@@ -62,21 +56,19 @@ export function NavBar({ view, onNavigate, menuOpen, onToggleMenu }: Props) {
 
       {menuOpen && (
         <div className="nav__drawer">
-          {[...TABS, { id: 'profile' as ViewId, label: 'Profile' }, { id: 'admin' as ViewId, label: 'Admin' }].map(
-            (t) => (
-              <button
-                key={t.id}
-                type="button"
-                className={view === t.id ? 'nav__drawer-item is-active' : 'nav__drawer-item'}
-                onClick={() => {
-                  onNavigate(t.id)
-                  onToggleMenu()
-                }}
-              >
-                {t.label}
-              </button>
-            ),
-          )}
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              className={view === t.id ? 'nav__drawer-item is-active' : 'nav__drawer-item'}
+              onClick={() => {
+                onNavigate(t.id)
+                onToggleMenu()
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
       )}
     </header>

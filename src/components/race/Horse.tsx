@@ -70,7 +70,7 @@ export function HorseMesh({ horse, index, fieldRef }: Props) {
           anchorX="center"
           anchorY="middle"
           outlineWidth={0.03}
-          outlineColor="#0c0907"
+          outlineColor="#0f1c3a"
         >
           {String(horse.number)}
         </Text>

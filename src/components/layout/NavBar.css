@@ -4,8 +4,8 @@
   align-items: center;
   gap: 1rem;
   padding: 0.65rem 1rem;
-  background: linear-gradient(180deg, #1f1610, #16100c);
-  border-bottom: 1px solid rgba(196, 165, 116, 0.35);
+  background: linear-gradient(180deg, #1a2d55, #0f1c3a);
+  border-bottom: 1px solid rgba(201, 162, 39, 0.4);
   z-index: 20;
   flex-shrink: 0;
 }
@@ -21,7 +21,7 @@
 .nav__brand strong {
   font-family: var(--font-display);
   font-size: 1.45rem;
-  color: var(--brass-bright);
+  color: var(--gold-bright);
   letter-spacing: 0.08em;
   display: block;
   line-height: 1;
@@ -39,9 +39,9 @@
   height: 2rem;
   border-radius: 8px;
   background:
-    radial-gradient(circle at 50% 35%, #e8c97a 0 18%, transparent 19%),
-    linear-gradient(145deg, #3a2818, #1a120b);
-  border: 1px solid rgba(196, 165, 116, 0.5);
+    radial-gradient(circle at 50% 35%, #e0bf4a 0 18%, transparent 19%),
+    linear-gradient(145deg, #1a2744, #0a1428);
+  border: 1px solid rgba(201, 162, 39, 0.55);
   flex-shrink: 0;
 }
 
@@ -65,13 +65,13 @@
 }
 
 .nav__tab:hover {
-  color: var(--warm);
+  color: var(--cream);
 }
 
 .nav__tab.is-active {
-  color: var(--bg-deep);
-  background: linear-gradient(180deg, var(--brass-bright), var(--brass));
-  border-color: rgba(232, 201, 122, 0.5);
+  color: var(--navy);
+  background: linear-gradient(180deg, var(--gold-bright), var(--gold));
+  border-color: rgba(224, 191, 74, 0.55);
 }
 
 .nav__actions {
@@ -79,23 +79,6 @@
   display: flex;
   align-items: center;
   gap: 0.35rem;
-}
-
-.nav__ghost {
-  display: none;
-  appearance: none;
-  border: 1px solid rgba(196, 165, 116, 0.25);
-  background: transparent;
-  color: var(--brass);
-  padding: 0.4rem 0.75rem;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.85rem;
-}
-
-.nav__ghost:hover {
-  border-color: var(--brass);
-  color: var(--brass-bright);
 }
 
 .nav__burger {
@@ -106,7 +89,7 @@
   width: 2.4rem;
   height: 2.4rem;
   border-radius: 8px;
-  border: 1px solid rgba(196, 165, 116, 0.35);
+  border: 1px solid rgba(201, 162, 39, 0.35);
   background: var(--bg-elevated);
   cursor: pointer;
   padding: 0.55rem;
@@ -115,7 +98,7 @@
 .nav__burger span {
   display: block;
   height: 2px;
-  background: var(--brass);
+  background: var(--gold);
   border-radius: 1px;
 }
 
@@ -127,8 +110,8 @@
   display: flex;
   flex-direction: column;
   padding: 0.5rem;
-  background: rgba(22, 16, 12, 0.98);
-  border-bottom: 1px solid rgba(196, 165, 116, 0.35);
+  background: rgba(15, 28, 58, 0.98);
+  border-bottom: 1px solid rgba(201, 162, 39, 0.4);
   box-shadow: var(--shadow-panel);
 }
 
@@ -137,7 +120,7 @@
   border: none;
   background: transparent;
   text-align: left;
-  color: var(--warm);
+  color: var(--cream);
   padding: 0.85rem 1rem;
   border-radius: 8px;
   cursor: pointer;
@@ -146,8 +129,8 @@
 
 .nav__drawer-item.is-active,
 .nav__drawer-item:hover {
-  background: rgba(196, 165, 116, 0.12);
-  color: var(--brass-bright);
+  background: rgba(201, 162, 39, 0.14);
+  color: var(--gold-bright);
 }
 
 @media (min-width: 900px) {
@@ -157,10 +140,6 @@
 
   .nav__tabs {
     display: flex;
-  }
-
-  .nav__ghost {
-    display: inline-flex;
   }
 
   .nav__burger,
