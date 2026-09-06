@@ -2,17 +2,28 @@ import * as Ably from 'ably'
 
 /**
  * Thin web port of nealdeters/drby apiClient.
- * Live site: https://drby-live.netlify.app + /.netlify/functions/*
+ * Production: same-origin /live-api proxy -> drby-live Netlify functions (no CORS).
+ * Local with VITE_API_BASE pointing at drby-live host: call /.netlify/functions directly.
  */
 
-export function getBaseUrl(): string {
+function resolveApiUrl(): string {
   const override = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/$/, '')
-  if (override) return override
-  // Default to the same live backend as drby-live / drby_scheduler
-  return 'https://drby-live.netlify.app'
+  if (override) {
+    // Direct live host (local dev): append Netlify functions path
+    if (override.includes('drby-live.netlify.app')) {
+      return `${override}/.netlify/functions`
+    }
+    // Other overrides: use as-is if already a functions/proxy path
+    if (override.endsWith('/.netlify/functions') || override.endsWith('/live-api')) {
+      return override
+    }
+    return `${override}/.netlify/functions`
+  }
+  // Default: same-origin proxy configured in netlify.toml
+  return '/live-api'
 }
 
-export const API_URL = `${getBaseUrl()}/.netlify/functions`
+export const API_URL = resolveApiUrl()
 
 export const headers: HeadersInit = {
   'Content-Type': 'application/json',

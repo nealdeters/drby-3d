@@ -2,6 +2,14 @@
   command = "npm run build"
   publish = "dist"
 
+
+# Same-origin proxy to live Netlify functions (avoids browser CORS).
+[[redirects]]
+  from = "/live-api/*"
+  to = "https://drby-live.netlify.app/.netlify/functions/:splat"
+  status = 200
+  force = true
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
