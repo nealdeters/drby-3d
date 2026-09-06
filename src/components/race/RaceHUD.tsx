@@ -19,6 +19,8 @@ type Props = {
   trackSurface?: 'asphalt' | 'dirt' | 'turf' | 'grass'
   /** Overall progress 0–1 per horse id — read on a throttle, never every frame */
   progressRef?: MutableRefObject<Record<string, number>>
+  /** Locked finish order (ids in place order) — finished horses stay put */
+  finishOrderRef?: MutableRefObject<string[]>
 }
 
 type OrderRow = {
@@ -58,6 +60,7 @@ export function RaceHUD({
   trackName,
   trackSurface,
   progressRef,
+  finishOrderRef,
 }: Props) {
   const live =
     currentRace ??
@@ -105,24 +108,59 @@ export function RaceHUD({
     return horses
   }, [horses, live])
 
-  // Throttled running order from progressRef (~6 Hz) — no setState every frame
+  // Throttled running order from progressRef (~6 Hz) — no setState every frame.
+  // Finished horses keep locked places; only still-racing horses reshuffle below.
   useEffect(() => {
     const build = (): OrderRow[] => {
-      const rows = fieldHorses.map((h, i) => {
-        const fromRef = progressRef?.current?.[h.id]
-        const progress =
-          typeof fromRef === 'number' && Number.isFinite(fromRef) ? fromRef : 0
+      const byId = new Map(fieldHorses.map((h, i) => [h.id, { h, i }]))
+      const progressOf = (id: string) => {
+        const fromRef = progressRef?.current?.[id]
+        return typeof fromRef === 'number' && Number.isFinite(fromRef) ? fromRef : 0
+      }
+
+      const finishOrder = finishOrderRef?.current ?? []
+      const finishedIds: string[] = []
+      const seen = new Set<string>()
+      for (const id of finishOrder) {
+        if (byId.has(id) && !seen.has(id)) {
+          finishedIds.push(id)
+          seen.add(id)
+        }
+      }
+      // Also lock anyone who has crossed overall >= 1 even if finishOrder lagged
+      for (const h of fieldHorses) {
+        if (!seen.has(h.id) && progressOf(h.id) >= 1) {
+          finishedIds.push(h.id)
+          seen.add(h.id)
+        }
+      }
+
+      const finishedRows: OrderRow[] = finishedIds.map((id, idx) => {
+        const entry = byId.get(id)!
         return {
+          id,
+          place: idx + 1,
+          number: entry.h.number || entry.i + 1,
+          name: entry.h.name,
+          jersey: entry.h.jersey,
+          progress: Math.max(1, progressOf(id)),
+        }
+      })
+
+      const racingRows: OrderRow[] = fieldHorses
+        .filter((h) => !seen.has(h.id))
+        .map((h, i) => ({
           id: h.id,
           place: 0,
           number: h.number || i + 1,
           name: h.name,
           jersey: h.jersey,
-          progress,
-        }
-      })
-      rows.sort((a, b) => b.progress - a.progress || a.number - b.number)
-      return rows.map((r, i) => ({ ...r, place: i + 1 }))
+          progress: progressOf(h.id),
+        }))
+        .sort((a, b) => b.progress - a.progress || a.number - b.number)
+        .map((r, i) => ({ ...r, place: finishedRows.length + i + 1 }))
+
+      return [...finishedRows, ...racingRows]
     }
 
     setOrder(build())
@@ -130,7 +168,7 @@ export function RaceHUD({
       setOrder(build())
     }, 160) // ~6 Hz
     return () => window.clearInterval(id)
-  }, [fieldHorses, progressRef])
+  }, [fieldHorses, progressRef, finishOrderRef])
 
   const raceTimeLabel = formatClock(elapsedMs / 1000)
   const countdownLabel = formatClock(countdown)
@@ -203,8 +241,13 @@ export function RaceHUD({
         <div className="race-hud__order-scroll">
           {order.map((row) => {
             const fg = luminance(row.jersey) > 0.55 ? '#142038' : '#ffffff'
+            const done = row.progress >= 1
             return (
-              <div key={row.id} className="race-hud__order-row">
+              <div
+                key={row.id}
+                className={`race-hud__order-row${done ? ' is-finished' : ''}`}
+                data-finished={done ? 'true' : undefined}
+              >
                 <span className="race-hud__place">{row.place}</span>
                 <span
                   className="race-hud__num"
@@ -230,15 +273,20 @@ export function RaceHUD({
           {order.map((row) => {
             const h = fieldHorses.find((x) => x.id === row.id)
             const fg = luminance(row.jersey) > 0.55 ? '#142038' : '#ffffff'
+            const done = row.progress >= 1
             return (
-              <div key={row.id} className="race-hud__row">
+              <div
+                key={row.id}
+                className={`race-hud__row${done ? ' is-finished' : ''}`}
+                data-finished={done ? 'true' : undefined}
+              >
                 <span className="race-hud__place">{row.place}</span>
                 <span className="race-hud__num" style={{ background: row.jersey, color: fg }}>
                   {row.number}
                 </span>
                 <div>
                   <strong>{row.name}</strong>
-                  <div className="muted">{h?.jockey ?? '—'}</div>
+                  <div className="muted">{done ? 'Finished' : (h?.jockey ?? '—')}</div>
                 </div>
               </div>
             )

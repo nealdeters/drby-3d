@@ -33,6 +33,8 @@ export type StandingRow = {
   horseId: string
   points: number
   wins: number
+  /** 2nd + 3rd place finishes */
+  places: number
   starts: number
 }
 
@@ -156,14 +158,14 @@ export const RACES: RaceEntry[] = [
 ]
 
 export const STANDINGS: StandingRow[] = [
-  { rank: 1, horseId: 'h3', points: 86, wins: 4, starts: 9 },
-  { rank: 2, horseId: 'h1', points: 78, wins: 3, starts: 10 },
-  { rank: 3, horseId: 'h7', points: 71, wins: 3, starts: 9 },
-  { rank: 4, horseId: 'h5', points: 64, wins: 2, starts: 10 },
-  { rank: 5, horseId: 'h2', points: 58, wins: 2, starts: 9 },
-  { rank: 6, horseId: 'h6', points: 49, wins: 1, starts: 8 },
-  { rank: 7, horseId: 'h4', points: 41, wins: 1, starts: 9 },
-  { rank: 8, horseId: 'h8', points: 36, wins: 0, starts: 8 },
+  { rank: 1, horseId: 'h3', points: 86, wins: 4, places: 2, starts: 9 },
+  { rank: 2, horseId: 'h1', points: 78, wins: 3, places: 3, starts: 10 },
+  { rank: 3, horseId: 'h7', points: 71, wins: 3, places: 1, starts: 9 },
+  { rank: 4, horseId: 'h5', points: 64, wins: 2, places: 3, starts: 10 },
+  { rank: 5, horseId: 'h2', points: 58, wins: 2, places: 2, starts: 9 },
+  { rank: 6, horseId: 'h6', points: 49, wins: 1, places: 2, starts: 8 },
+  { rank: 7, horseId: 'h4', points: 41, wins: 1, places: 1, starts: 9 },
+  { rank: 8, horseId: 'h8', points: 36, wins: 0, places: 2, starts: 8 },
 ]
 
 export function horseById(id: string): Horse | undefined {

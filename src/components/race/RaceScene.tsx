@@ -95,6 +95,8 @@ function RacingField({
   )
   const idKeyRef = useRef('')
   const wasRacing = useRef(false)
+  /** Seconds since isRacing flipped true — soft catch-up at the break */
+  const raceAgeRef = useRef(0)
   const lapsRef = useRef(trackLaps)
   lapsRef.current = trackLaps
 
@@ -130,9 +132,10 @@ function RacingField({
     })
   }, [horses, laneRef, liveFeed])
 
-  // On race start: snap pack to gate before following live
+  // On race start: park pack at gate, then ease into live progress (no burst snap)
   useEffect(() => {
     if (liveFeed && isRacing && !wasRacing.current) {
+      raceAgeRef.current = 0
       horses.forEach((h, i) => {
         const s = fieldRef.current[i]
         if (!s) return
@@ -142,6 +145,9 @@ function RacingField({
           s.radial = laneToRadial(lane, horses.length)
         }
       })
+    }
+    if (!isRacing) {
+      raceAgeRef.current = 0
     }
     wasRacing.current = isRacing
   }, [liveFeed, isRacing, horses, laneRef])
@@ -167,6 +173,13 @@ function RacingField({
         return
       }
 
+      raceAgeRef.current += clamped
+      const startPhase = raceAgeRef.current < 2.75
+      // Soft opening: never snap-forward; cap catch-up so gate → live eases in
+      const followRate = startPhase ? 4.5 + raceAgeRef.current * 2.2 : 12
+      // Mid-race reconnect only — raised well above the old 0.35 that fired at the break
+      const snapThreshold = startPhase ? 0.92 : 0.72
+
       horses.forEach((h, i) => {
         const s = states[i]
         if (!s) return
@@ -177,11 +190,15 @@ function RacingField({
           let delta = tgt - cur
           if (delta < -0.5) delta += 1
           if (delta < 0) delta = 0 // no reverse
-          if (delta > 0.35) {
-            // Large jump (reconnect / lap wrap catch-up) — snap forward
+          if (!startPhase && delta > snapThreshold) {
+            // Large mid-race jump (reconnect / lap wrap) — snap forward
             s.progress = Math.floor(s.progress) + tgt
           } else {
-            s.progress = advanceForward(s.progress, delta * Math.min(1, clamped * 12))
+            // Always interpolate from current (gate or trail) — never batch-skip ticks
+            const step = Math.min(delta, delta * Math.min(1, clamped * followRate))
+            // Extra start-phase speed cap (~oval fraction / sec) so a late first packet eases in
+            const maxStep = startPhase ? clamped * (0.12 + raceAgeRef.current * 0.1) : delta
+            s.progress = advanceForward(s.progress, Math.min(step, maxStep))
           }
           s.pace = Math.max(0.85, Math.min(1.35, 0.9 + delta * 8))
         }

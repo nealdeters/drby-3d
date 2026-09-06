@@ -23,6 +23,7 @@ export default function App() {
           }}
           menuOpen={menuOpen}
           onToggleMenu={() => setMenuOpen((o) => !o)}
+          onCloseMenu={() => setMenuOpen(false)}
         />
         <main className="main-content">
           {view === 'race' && <RaceView />}

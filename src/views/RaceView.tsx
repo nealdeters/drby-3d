@@ -160,6 +160,7 @@ export function RaceView() {
         trackName={trackName}
         trackSurface={trackSurface}
         progressRef={feed.progressRef}
+        finishOrderRef={feed.finishOrderRef}
       />
     </div>
   )

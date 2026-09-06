@@ -305,3 +305,18 @@
     padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
   }
 }
+
+
+.race-hud__order-row.is-finished,
+.race-hud__row.is-finished {
+  opacity: 0.92;
+  border-color: rgba(201, 162, 39, 0.45);
+}
+
+.race-hud__order-row.is-finished {
+  background: rgba(201, 162, 39, 0.12);
+}
+
+.race-hud__row.is-finished strong {
+  color: var(--gold-bright);
+}

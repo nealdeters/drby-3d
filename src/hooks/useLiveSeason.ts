@@ -101,9 +101,11 @@ function buildStandings(
   schedule: LiveRaceEvent[],
 ): StandingRow[] {
   const wins: Record<string, number> = {}
+  const places: Record<string, number> = {}
   const starts: Record<string, number> = {}
   for (const r of roster) {
     wins[r.id] = 0
+    places[r.id] = 0
     starts[r.id] = 0
   }
   for (const race of schedule) {
@@ -113,6 +115,9 @@ function buildStandings(
     }
     const winner = race.results[0]
     if (winner) wins[winner] = (wins[winner] ?? 0) + 1
+    for (const id of race.results.slice(1, 3)) {
+      places[id] = (places[id] ?? 0) + 1
+    }
   }
   const ids = Object.keys(points).length
     ? Object.keys(points)
@@ -122,6 +127,7 @@ function buildStandings(
       horseId: id,
       points: points[id] ?? 0,
       wins: wins[id] ?? 0,
+      places: places[id] ?? 0,
       starts: starts[id] ?? 0,
       rank: 0,
     }))
@@ -260,10 +266,11 @@ export function useLiveSeason(): LiveSeasonState {
   // Soft-refresh schedule/standings so next-race countdown advances after finishes
   const softRefresh = useCallback(async () => {
     try {
-      const [fetchedSchedule, fetchedStandings, fetchedNum] = await Promise.all([
+      const [fetchedSchedule, fetchedStandings, fetchedNum, fetchedRoster] = await Promise.all([
         racesService.getSeasonSchedule(),
         racesService.getStandings().catch(() => null),
         racesService.getCurrentSeasonNumber().catch(() => null),
+        racesService.getRoster().catch(() => null),
       ])
       const scheduleList = Array.isArray(fetchedSchedule) ? fetchedSchedule : null
       if (scheduleList) {
@@ -273,6 +280,9 @@ export function useLiveSeason(): LiveSeasonState {
         setPoints(fetchedStandings)
       }
       if (typeof fetchedNum === 'number') setSeasonNumber(fetchedNum)
+      if (Array.isArray(fetchedRoster) && fetchedRoster.length) {
+        setRoster(fetchedRoster)
+      }
     } catch (err) {
       console.warn('[useLiveSeason] soft refresh failed', err)
     }
