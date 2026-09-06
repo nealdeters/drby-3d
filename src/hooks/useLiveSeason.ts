@@ -250,6 +250,35 @@ export function useLiveSeason(): LiveSeasonState {
     void load()
   }, [load])
 
+  // Soft-refresh schedule/standings so next-race countdown advances after finishes
+  const softRefresh = useCallback(async () => {
+    try {
+      const [fetchedSchedule, fetchedStandings, fetchedNum] = await Promise.all([
+        racesService.getSeasonSchedule(),
+        racesService.getStandings().catch(() => null),
+        racesService.getCurrentSeasonNumber().catch(() => null),
+      ])
+      const scheduleList = Array.isArray(fetchedSchedule) ? fetchedSchedule : null
+      if (scheduleList) {
+        setSchedule(scheduleList)
+      }
+      if (fetchedStandings && typeof fetchedStandings === 'object') {
+        setPoints(fetchedStandings)
+      }
+      if (typeof fetchedNum === 'number') setSeasonNumber(fetchedNum)
+    } catch (err) {
+      console.warn('[useLiveSeason] soft refresh failed', err)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (mode !== 'live') return
+    const id = window.setInterval(() => {
+      void softRefresh()
+    }, 20_000)
+    return () => window.clearInterval(id)
+  }, [mode, softRefresh])
+
   const derived = useMemo(() => {
     if (mode === 'demo') {
       const d = demoState()

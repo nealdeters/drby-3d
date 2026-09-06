@@ -7,17 +7,28 @@ type Props = {
   mode: DataMode
   feedConnected: boolean
   isRacing: boolean
+  /** Ably race elapsed ms — shown as Race time while racing */
+  elapsedMs?: number
   horses: Horse[]
   races: RaceEntry[]
   currentRace: RaceEntry | null
+  /** First future (!completed && startTime > now) race for countdown */
   nextRace: RaceEntry | null
   trackName?: string
+}
+
+function formatClock(totalSec: number): string {
+  const s = Math.max(0, Math.floor(totalSec))
+  const mm = String(Math.floor(s / 60)).padStart(2, '0')
+  const ss = String(s % 60).padStart(2, '0')
+  return `${mm}:${ss}`
 }
 
 export function RaceHUD({
   mode,
   feedConnected,
   isRacing,
+  elapsedMs = 0,
   horses,
   races,
   currentRace,
@@ -38,24 +49,27 @@ export function RaceHUD({
   const [countdown, setCountdown] = useState(0)
 
   useEffect(() => {
+    if (isRacing) {
+      setCountdown(0)
+      return
+    }
     if (!upcoming) {
       setCountdown(0)
       return
     }
     const tick = () => {
-      const sec = Math.max(
-        0,
-        Math.floor((new Date(upcoming.scheduledAt).getTime() - Date.now()) / 1000),
-      )
+      const target = new Date(upcoming.scheduledAt).getTime()
+      // Future-only: if somehow past, show 0
+      const sec = Math.max(0, Math.floor((target - Date.now()) / 1000))
       setCountdown(sec)
     }
     tick()
     const id = window.setInterval(tick, 1000)
     return () => window.clearInterval(id)
-  }, [upcoming])
+  }, [upcoming, isRacing])
 
-  const mm = String(Math.floor(countdown / 60)).padStart(2, '0')
-  const ss = String(countdown % 60).padStart(2, '0')
+  const raceTimeLabel = formatClock(elapsedMs / 1000)
+  const countdownLabel = formatClock(countdown)
 
   const fieldHorses = useMemo(() => {
     if (live?.horseIds?.length) {
@@ -70,7 +84,14 @@ export function RaceHUD({
   }, [horses, live])
 
   const modeLabel = mode === 'live' ? (feedConnected || isRacing ? 'Live' : 'Live · waiting') : 'Demo'
-  const paceLabel = mode === 'live' && feedConnected ? 'Live pace' : mode === 'live' ? 'Standby' : 'Fake pace'
+  const paceLabel =
+    mode === 'live' && isRacing
+      ? 'Live pace'
+      : mode === 'live' && feedConnected
+        ? 'At gate'
+        : mode === 'live'
+          ? 'Standby'
+          : 'Fake pace'
 
   return (
     <div className="race-hud">
@@ -87,11 +108,19 @@ export function RaceHUD({
           </p>
         </div>
         <div className="race-hud__clock">
-          <span className="muted">{upcoming ? 'Next race' : 'Countdown'}</span>
-          <strong>
-            {upcoming ? `${mm}:${ss}` : '—'}
-          </strong>
-          {upcoming && <span className="muted">{upcoming.name}</span>}
+          {isRacing ? (
+            <>
+              <span className="muted">Race time</span>
+              <strong>{raceTimeLabel}</strong>
+              {live && <span className="muted">{live.name}</span>}
+            </>
+          ) : (
+            <>
+              <span className="muted">{upcoming ? 'Next race' : 'Countdown'}</span>
+              <strong>{upcoming ? countdownLabel : '—'}</strong>
+              {upcoming && <span className="muted">{upcoming.name}</span>}
+            </>
+          )}
         </div>
       </div>
 
@@ -115,7 +144,7 @@ export function RaceHUD({
             </div>
           ))}
         </div>
-        {upcoming && (
+        {!isRacing && upcoming && (
           <div className="race-hud__next">
             <div className="muted">Up next</div>
             <strong>{upcoming.name}</strong>

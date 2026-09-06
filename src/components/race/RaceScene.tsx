@@ -42,63 +42,127 @@ function laneToRadial(lane: number, count: number): number {
   return THREE.MathUtils.clamp(((L - 1) / Math.max(max - 1, 1)) * 1.7 - 0.85, -0.92, 0.92)
 }
 
+/** Scheduler progressMap is overall 0–1; map to our oval (finish wire at 0.5). */
+export function overallToOvalProgress(overall: number, laps: number): number {
+  const L = laps > 0 ? laps : 1
+  const lapFrac = ((((overall * L) % 1) + 1) % 1)
+  return (lapFrac + 0.5) % 1
+}
+
+const GATE_OVAL = 0.5
+
 type FieldProps = {
   horses: Horse[]
-  /** When true, drive from Ably progress/lane refs instead of local stepField */
+  /** Live mode (subscribed): never run demo stepField — gate-hold or follow progressMap */
   liveFeed: boolean
+  /** When liveFeed and racing, follow progressMap; otherwise hold at gate */
+  isRacing: boolean
+  /** Track lap count for overall→lapFrac mapping (default 1) */
+  trackLaps: number
   progressRef?: MutableRefObject<Record<string, number>>
   laneRef?: MutableRefObject<Record<string, number>>
 }
 
-function RacingField({ horses, liveFeed, progressRef, laneRef }: FieldProps) {
+function RacingField({
+  horses,
+  liveFeed,
+  isRacing,
+  trackLaps,
+  progressRef,
+  laneRef,
+}: FieldProps) {
   const fieldRef = useRef<HorseSimState[]>(
     createFieldState(
       horses.length,
       horses.map((h) => h.speedBias),
     ),
   )
-  const idOrder = useRef<string[]>(horses.map((h) => h.id))
-  const prevLive = useRef(false)
+  const idKeyRef = useRef('')
+  const wasRacing = useRef(false)
+  const lapsRef = useRef(trackLaps)
+  lapsRef.current = trackLaps
 
-  // Rebuild local sim when horse set changes (demo / roster swap)
+  // Rebuild local sim only when the horse identity set changes (not every tick)
   useEffect(() => {
-    idOrder.current = horses.map((h) => h.id)
+    const key = horses.map((h) => h.id).join('|')
+    if (key === idKeyRef.current && fieldRef.current.length === horses.length) {
+      // Still refresh radials from lanes without resetting progress
+      if (laneRef?.current) {
+        horses.forEach((h, i) => {
+          const lane = laneRef.current[h.id]
+          if (lane && fieldRef.current[i]) {
+            fieldRef.current[i].radial = laneToRadial(lane, horses.length)
+          }
+        })
+      }
+      return
+    }
+    idKeyRef.current = key
     fieldRef.current = createFieldState(
       horses.length,
       horses.map((h) => h.speedBias),
     )
-    // Seed lanes if live refs already have values
-    if (laneRef?.current) {
+    // Live gate: finish/start wire at oval 0.5 with lane radials
+    horses.forEach((h, i) => {
+      const s = fieldRef.current[i]
+      if (!s) return
+      if (liveFeed) {
+        s.progress = GATE_OVAL - (i / Math.max(horses.length, 1)) * 0.012
+      }
+      const lane = laneRef?.current[h.id]
+      if (lane) s.radial = laneToRadial(lane, horses.length)
+    })
+  }, [horses, laneRef, liveFeed])
+
+  // On race start: snap pack to gate before following live
+  useEffect(() => {
+    if (liveFeed && isRacing && !wasRacing.current) {
       horses.forEach((h, i) => {
-        const lane = laneRef.current[h.id]
-        if (lane) fieldRef.current[i].radial = laneToRadial(lane, horses.length)
+        const s = fieldRef.current[i]
+        if (!s) return
+        s.progress = GATE_OVAL - (i / Math.max(horses.length, 1)) * 0.012
+        const lane = laneRef?.current[h.id]
+        if (typeof lane === 'number' && lane > 0) {
+          s.radial = laneToRadial(lane, horses.length)
+        }
       })
     }
-  }, [horses, laneRef])
+    wasRacing.current = isRacing
+  }, [liveFeed, isRacing, horses, laneRef])
 
   useFrame((_, dt) => {
     const clamped = Math.min(dt, 0.05)
     const states = fieldRef.current
+    const laps = lapsRef.current > 0 ? lapsRef.current : 1
 
-    if (liveFeed && progressRef) {
-      if (!prevLive.current) {
-        // Entering live: snap radials from lanes, keep forward progress
-        prevLive.current = true
+    if (liveFeed) {
+      if (!isRacing || !progressRef) {
+        // Gate hold / idle between races — do not run demo stepField
+        horses.forEach((h, i) => {
+          const s = states[i]
+          if (!s) return
+          const gate = GATE_OVAL - (i / Math.max(horses.length, 1)) * 0.012
+          s.progress = THREE.MathUtils.lerp(s.progress, gate, 1 - Math.exp(-clamped * 6))
+          s.pace = 0.85
+          const lane = laneRef?.current[h.id] ?? i + 1
+          const desired = laneToRadial(lane, horses.length)
+          s.radial = THREE.MathUtils.lerp(s.radial, desired, 1 - Math.exp(-clamped * 5))
+        })
+        return
       }
+
       horses.forEach((h, i) => {
         const s = states[i]
         if (!s) return
-        const target = progressRef.current[h.id]
-        if (typeof target === 'number' && Number.isFinite(target)) {
-          // Smooth toward live lap progress; never reverse along the oval
+        const overall = progressRef.current[h.id]
+        if (typeof overall === 'number' && Number.isFinite(overall)) {
+          const tgt = overallToOvalProgress(overall, laps)
           const cur = ((s.progress % 1) + 1) % 1
-          let tgt = ((target % 1) + 1) % 1
-          // Choose shortest forward delta (prefer CCW / forward-only)
           let delta = tgt - cur
           if (delta < -0.5) delta += 1
           if (delta < 0) delta = 0 // no reverse
           if (delta > 0.35) {
-            // Large jump (reconnect) — snap forward
+            // Large jump (reconnect / lap wrap catch-up) — snap forward
             s.progress = Math.floor(s.progress) + tgt
           } else {
             s.progress = advanceForward(s.progress, delta * Math.min(1, clamped * 12))
@@ -112,7 +176,6 @@ function RacingField({ horses, liveFeed, progressRef, laneRef }: FieldProps) {
         }
       })
     } else {
-      prevLive.current = false
       stepField(states, clamped, 1 / 30)
     }
   })
@@ -135,6 +198,8 @@ function advanceForward(progress: number, delta: number): number {
 export type RaceSceneProps = {
   horses: Horse[]
   liveFeed?: boolean
+  isRacing?: boolean
+  trackLaps?: number
   progressRef?: MutableRefObject<Record<string, number>>
   laneRef?: MutableRefObject<Record<string, number>>
 }
@@ -142,6 +207,8 @@ export type RaceSceneProps = {
 export function RaceScene({
   horses,
   liveFeed = false,
+  isRacing = false,
+  trackLaps = 1,
   progressRef,
   laneRef,
 }: RaceSceneProps) {
@@ -182,6 +249,8 @@ export function RaceScene({
       <RacingField
         horses={horses}
         liveFeed={liveFeed}
+        isRacing={isRacing}
+        trackLaps={trackLaps}
         progressRef={progressRef}
         laneRef={laneRef}
       />
