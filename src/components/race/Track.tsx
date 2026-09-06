@@ -538,79 +538,79 @@ export function Track() {
         <meshStandardMaterial color={GOLD} metalness={0.5} roughness={0.3} />
       </mesh>
 
-      {/* Near grandstand apron — cream stone walk + turf (kills gray road stripe) */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 18.4]} receiveShadow>
-        <planeGeometry args={[44, 5.2]} />
-        <meshStandardMaterial color="#efe6d4" roughness={0.92} />
-      </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.025, 18.4]} receiveShadow>
-        <planeGeometry args={[42, 0.18]} />
-        <meshStandardMaterial color="#e0d4bc" roughness={0.88} />
-      </mesh>
-      {/* Turf strip just outside the near rail */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 16.35]} receiveShadow>
-        <planeGeometry args={[46, 1.35]} />
+      {/* Turf + cream apron flush to outer rail (~z 15.3) — no dark gap */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 15.85]} receiveShadow>
+        <planeGeometry args={[46, 1.05]} />
         <meshStandardMaterial color="#3d8f3a" roughness={0.95} />
       </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 16.85]} receiveShadow>
+        <planeGeometry args={[44, 1.55]} />
+        <meshStandardMaterial color="#efe6d4" roughness={0.92} />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.025, 16.85]} receiveShadow>
+        <planeGeometry args={[42, 0.14]} />
+        <meshStandardMaterial color="#e0d4bc" roughness={0.88} />
+      </mesh>
       {/* Lawn filling bottom-of-frame past the stands (toward camera) */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 34]} receiveShadow>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 30]} receiveShadow>
         <planeGeometry args={[90, 28]} />
         <meshStandardMaterial color="#3a8a38" roughness={1} />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 42]} receiveShadow>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 40]} receiveShadow>
         <planeGeometry args={[100, 18]} />
         <meshStandardMaterial color="#2f7a32" roughness={1} />
       </mesh>
 
-      {/* Near grandstand — cream / white with columns */}
-      <group position={[0, 0, 21.2]}>
+      {/* Near grandstand — pulled flush toward outer rail; thin cream canopy (no navy asphalt slab) */}
+      <group position={[0, 0, 17.55]}>
         {[0, 1, 2, 3, 4, 5, 6, 7].map((row) => (
-          <mesh key={row} position={[0, 0.35 + row * 0.48, row * 0.58]} castShadow receiveShadow>
-            <boxGeometry args={[38 - row * 0.55, 0.28, 0.85]} />
+          <mesh key={row} position={[0, 0.35 + row * 0.48, row * 0.55]} castShadow receiveShadow>
+            <boxGeometry args={[38 - row * 0.55, 0.28, 0.8]} />
             <meshStandardMaterial color={row % 2 ? STONE : CREAM} roughness={0.75} />
           </mesh>
         ))}
-        <CrowdDots width={34} depth={4.4} rows={7} cols={30} baseY={0.35} baseZ={0.12} />
+        <CrowdDots width={34} depth={4.0} rows={7} cols={30} baseY={0.35} baseZ={0.1} />
         {[-16, -11, -6, -2, 2, 6, 11, 16].map((x) => (
-          <group key={x} position={[x, 0, 1.4]}>
-            <mesh position={[0, 2.35, 0]} castShadow>
-              <cylinderGeometry args={[0.28, 0.32, 4.7, 10]} />
+          <group key={x} position={[x, 0, 1.2]}>
+            <mesh position={[0, 2.2, 0]} castShadow>
+              <cylinderGeometry args={[0.26, 0.3, 4.4, 10]} />
               <meshStandardMaterial color={COLUMN} roughness={0.55} />
             </mesh>
-            <mesh position={[0, 4.85, 0]}>
-              <boxGeometry args={[0.7, 0.28, 0.7]} />
+            <mesh position={[0, 4.55, 0]}>
+              <boxGeometry args={[0.65, 0.24, 0.65]} />
               <meshStandardMaterial color={STONE} roughness={0.6} />
             </mesh>
             <mesh position={[0, 0.12, 0]}>
-              <boxGeometry args={[0.65, 0.24, 0.65]} />
+              <boxGeometry args={[0.6, 0.22, 0.6]} />
               <meshStandardMaterial color={STONE} roughness={0.65} />
             </mesh>
           </group>
         ))}
-        <mesh position={[0, 5.55, 2.8]} castShadow>
-          <boxGeometry args={[40, 0.28, 9.2]} />
-          <meshStandardMaterial color={NAVY} roughness={0.55} />
+        {/* Thin cream/stone canopy — does not dominate overhead view */}
+        <mesh position={[0, 5.15, 1.9]} castShadow>
+          <boxGeometry args={[37.5, 0.12, 5.2]} />
+          <meshStandardMaterial color={STONE} roughness={0.68} />
         </mesh>
-        <mesh position={[0, 5.25, -0.7]}>
-          <boxGeometry args={[39, 0.35, 0.25]} />
+        <mesh position={[0, 5.05, -0.55]}>
+          <boxGeometry args={[36.5, 0.18, 0.2]} />
           <meshStandardMaterial color={GOLD} metalness={0.45} roughness={0.35} />
         </mesh>
-        <mesh position={[0, 2.7, 6.2]} castShadow>
-          <boxGeometry args={[39, 5.4, 0.55]} />
+        <mesh position={[0, 2.4, 4.85]} castShadow>
+          <boxGeometry args={[37, 4.8, 0.45]} />
           <meshStandardMaterial color={CREAM} roughness={0.7} />
         </mesh>
-        <mesh position={[0, 0.55, -1.35]} castShadow receiveShadow>
-          <boxGeometry args={[40, 1.1, 0.45]} />
+        <mesh position={[0, 0.5, -1.05]} castShadow receiveShadow>
+          <boxGeometry args={[38.5, 1.0, 0.4]} />
           <meshStandardMaterial color={CREAM} roughness={0.7} />
         </mesh>
-        <mesh position={[0, 1.15, -1.35]}>
-          <boxGeometry args={[40.2, 0.16, 0.5]} />
+        <mesh position={[0, 1.05, -1.05]}>
+          <boxGeometry args={[38.7, 0.14, 0.45]} />
           <meshStandardMaterial color={GOLD} metalness={0.4} roughness={0.35} />
         </mesh>
       </group>
 
       {/* Extended lower seating / patio beyond main stand — fills bottom of frame */}
-      <group position={[0, 0, 28.5]}>
+      <group position={[0, 0, 23.2]}>
         {[0, 1, 2, 3].map((row) => (
           <mesh key={row} position={[0, 0.22 + row * 0.38, row * 0.55]} castShadow receiveShadow>
             <boxGeometry args={[44 - row * 0.4, 0.22, 0.75]} />
@@ -625,18 +625,18 @@ export function Track() {
       </group>
 
       {/* Landscaping along apron — hedges + blooms (outside oval, no clip) */}
-      <FlowerBed position={[-12, 0, 16.9]} width={9} />
-      <FlowerBed position={[12, 0, 16.9]} width={9} />
-      <FlowerBed position={[0, 0, 16.9]} width={7} />
-      <FlowerBed position={[-18, 0, 19.6]} width={6} />
-      <FlowerBed position={[18, 0, 19.6]} width={6} />
-      <HedgeBox position={[-20, 0.4, 17.6]} size={[8, 0.8, 0.7]} />
-      <HedgeBox position={[20, 0.4, 17.6]} size={[8, 0.8, 0.7]} />
-      <HedgeBox position={[0, 0.35, 20.15]} size={[36, 0.7, 0.55]} />
-      <HedgeBox position={[-22, 0.45, 24]} size={[0.7, 0.9, 10]} />
-      <HedgeBox position={[22, 0.45, 24]} size={[0.7, 0.9, 10]} />
-      <FlowerBed position={[-8, 0, 31.2]} width={10} />
-      <FlowerBed position={[8, 0, 31.2]} width={10} />
+      <FlowerBed position={[-12, 0, 16.35]} width={9} />
+      <FlowerBed position={[12, 0, 16.35]} width={9} />
+      <FlowerBed position={[0, 0, 16.35]} width={7} />
+      <FlowerBed position={[-18, 0, 17.9]} width={6} />
+      <FlowerBed position={[18, 0, 17.9]} width={6} />
+      <HedgeBox position={[-20, 0.4, 16.7]} size={[8, 0.8, 0.55]} />
+      <HedgeBox position={[20, 0.4, 16.7]} size={[8, 0.8, 0.55]} />
+      <HedgeBox position={[0, 0.35, 17.3]} size={[34, 0.55, 0.4]} />
+      <HedgeBox position={[-22, 0.45, 20.5]} size={[0.7, 0.9, 8]} />
+      <HedgeBox position={[22, 0.45, 20.5]} size={[0.7, 0.9, 8]} />
+      <FlowerBed position={[-8, 0, 26.4]} width={10} />
+      <FlowerBed position={[8, 0, 26.4]} width={10} />
 
       <HedgeBox position={[-8, 0.35, 0]} size={[1.2, 0.7, 3.5]} />
       <HedgeBox position={[8, 0.35, 0]} size={[1.2, 0.7, 3.5]} />

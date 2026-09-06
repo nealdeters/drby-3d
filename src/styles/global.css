@@ -1,42 +1,41 @@
 :root {
-  color-scheme: light;
-  /* Race-day program: cream paper, navy ink, gold foil */
-  --cream: #f7f1e4;
-  --cream-soft: #efe6d4;
-  --cream-deep: #e4d8c0;
-  --paper: #fbf7ef;
-  /* Soft race-day turf / sage ground (non-Race pages + shell) */
-  --turf-soft: #e2eadc;
-  --turf-mid: #d5e0ce;
-  --turf-deep: #c5d4bc;
-  --sage: #d8e2d2;
-  --ink: #142038;
-  --ink-soft: #2a3a58;
+  color-scheme: dark;
+  /* Soft dusk race-day: charcoal-sage ground, dim cards, light ink, gold foil */
+  --cream: #e8ece4;
+  --cream-soft: #d5dcd0;
+  --cream-deep: #b8c2b0;
+  --paper: #1a2830;
+  --turf-soft: #121c22;
+  --turf-mid: #0e171c;
+  --turf-deep: #0a1216;
+  --sage: #152028;
+  --ink: #e8ece4;
+  --ink-soft: #c5cec0;
   --navy: #142038;
   --navy-mid: #1a2744;
   --navy-deep: #0c162c;
   --gold: #c9a227;
   --gold-bright: #d4b03a;
-  --gold-dim: #8a7020;
-  --muted: #5c6b82;
-  --muted-light: #8a96a8;
-  --accent: #8b1a2b;
-  --accent-soft: #b83248;
-  --success: #2f7a32;
-  --danger: #c44536;
+  --gold-dim: #b8962e;
+  --muted: #8a9688;
+  --muted-light: #a8b2a4;
+  --accent: #d45a6a;
+  --accent-soft: #e07885;
+  --success: #6aad6a;
+  --danger: #d4685a;
   --track-dirt: #d2b48c;
   --radius: 12px;
   --radius-sm: 8px;
   --font-display: 'Fraunces', 'Cormorant Garamond', Georgia, serif;
   --font-body: 'Source Sans 3', 'IBM Plex Sans', system-ui, sans-serif;
-  --shadow-soft: 0 8px 28px rgba(20, 32, 56, 0.1);
-  --shadow-card: 0 4px 20px rgba(20, 32, 56, 0.09);
-  --border-gold: 1px solid rgba(201, 162, 39, 0.45);
-  --border-ink: 1px solid rgba(20, 32, 56, 0.12);
+  --shadow-soft: 0 8px 28px rgba(0, 0, 0, 0.35);
+  --shadow-card: 0 4px 18px rgba(0, 0, 0, 0.28);
+  --border-gold: 1px solid rgba(201, 162, 39, 0.4);
+  --border-ink: 1px solid rgba(232, 236, 228, 0.1);
   /* Legacy aliases used by Race HUD / 3D overlays */
   --bg-deep: var(--navy-deep);
-  --bg-panel: var(--navy-mid);
-  --bg-elevated: #243560;
+  --bg-panel: #16242c;
+  --bg-elevated: #1e303a;
   --bg-card: var(--paper);
   --brass: var(--gold);
   --brass-bright: var(--gold-bright);
@@ -68,13 +67,13 @@ body {
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
   background-image:
-    radial-gradient(ellipse 90% 55% at 50% -15%, rgba(201, 162, 39, 0.1), transparent 55%),
-    radial-gradient(ellipse 55% 45% at 100% 100%, rgba(47, 122, 50, 0.08), transparent 50%),
-    radial-gradient(ellipse 40% 35% at 0% 80%, rgba(61, 143, 58, 0.07), transparent 45%),
-    linear-gradient(180deg, var(--sage) 0%, var(--turf-soft) 38%, var(--turf-mid) 100%);
+    radial-gradient(ellipse 90% 55% at 50% -15%, rgba(201, 162, 39, 0.08), transparent 55%),
+    radial-gradient(ellipse 55% 45% at 100% 100%, rgba(40, 90, 70, 0.12), transparent 50%),
+    radial-gradient(ellipse 40% 35% at 0% 80%, rgba(30, 60, 80, 0.14), transparent 45%),
+    linear-gradient(180deg, #152028 0%, #121c22 40%, #0e171c 100%);
 }
 
-/* Hide Netlify "Powered by" / HUD badge injected at the edge */
+/* Hide Netlify \"Powered by\" / HUD badge injected at the edge */
 #nl-hud-frame,
 #nl-badge-frame,
 iframe[id^='nl-'],
@@ -99,7 +98,7 @@ select {
 }
 
 a {
-  color: var(--accent);
+  color: var(--accent-soft);
 }
 
 h1,
@@ -130,7 +129,7 @@ h3 {
 }
 
 .panel {
-  background: var(--paper);
+  background: rgba(26, 40, 48, 0.92);
   border: var(--border-ink);
   border-radius: var(--radius);
   box-shadow: var(--shadow-card);
@@ -142,7 +141,7 @@ h3 {
   justify-content: space-between;
   gap: 1rem;
   padding: 1.15rem 1.35rem 0.85rem;
-  border-bottom: 1px solid rgba(20, 32, 56, 0.1);
+  border-bottom: 1px solid rgba(232, 236, 228, 0.08);
 }
 
 .panel-header h2 {
@@ -167,8 +166,8 @@ h3 {
   padding: 0.22rem 0.6rem;
   border-radius: 999px;
   background: rgba(201, 162, 39, 0.14);
-  border: 1px solid rgba(201, 162, 39, 0.4);
-  color: var(--gold-dim);
+  border: 1px solid rgba(201, 162, 39, 0.35);
+  color: var(--gold-bright);
   font-size: 0.72rem;
   font-weight: 600;
   letter-spacing: 0.06em;
@@ -177,22 +176,22 @@ h3 {
 
 .badge[data-status='live'],
 .badge.is-live {
-  background: rgba(139, 26, 43, 0.1);
-  border-color: rgba(139, 26, 43, 0.35);
-  color: var(--accent);
+  background: rgba(184, 50, 72, 0.2);
+  border-color: rgba(212, 90, 106, 0.4);
+  color: #f0b4bc;
 }
 
 .badge[data-status='final'],
 .badge.is-final {
-  background: rgba(20, 32, 56, 0.06);
-  border-color: rgba(20, 32, 56, 0.18);
+  background: rgba(232, 236, 228, 0.06);
+  border-color: rgba(232, 236, 228, 0.16);
   color: var(--ink-soft);
 }
 
 .badge[data-status='upcoming'],
 .badge.is-upcoming {
-  background: rgba(47, 122, 50, 0.1);
-  border-color: rgba(47, 122, 50, 0.3);
+  background: rgba(106, 173, 106, 0.14);
+  border-color: rgba(106, 173, 106, 0.35);
   color: var(--success);
 }
 
@@ -206,7 +205,7 @@ h3 {
 .table td {
   text-align: left;
   padding: 0.8rem 0.55rem;
-  border-bottom: 1px solid rgba(20, 32, 56, 0.08);
+  border-bottom: 1px solid rgba(232, 236, 228, 0.07);
   color: var(--ink);
 }
 
@@ -223,7 +222,7 @@ h3 {
 }
 
 .table tr:hover td {
-  background: rgba(201, 162, 39, 0.06);
+  background: rgba(201, 162, 39, 0.07);
 }
 
 .table strong {
@@ -238,7 +237,7 @@ h3 {
 }
 
 .card {
-  background: var(--paper);
+  background: rgba(26, 40, 48, 0.92);
   border: var(--border-ink);
   border-radius: var(--radius);
   padding: 1.15rem 1.2rem 1.25rem;
@@ -266,7 +265,7 @@ h3 {
 .btn {
   appearance: none;
   border: var(--border-gold);
-  background: var(--paper);
+  background: rgba(30, 48, 58, 0.9);
   color: var(--ink);
   border-radius: var(--radius-sm);
   padding: 0.55rem 1rem;
@@ -276,7 +275,7 @@ h3 {
 
 .btn:hover {
   border-color: var(--gold);
-  background: var(--cream-soft);
+  background: rgba(40, 60, 72, 0.95);
 }
 
 .btn:active {
@@ -284,7 +283,7 @@ h3 {
 }
 
 .btn-primary {
-  background: linear-gradient(180deg, var(--accent-soft), var(--accent));
+  background: linear-gradient(180deg, var(--accent-soft), #b83248);
   border-color: rgba(184, 50, 72, 0.45);
   color: #fff;
   font-weight: 600;
@@ -325,7 +324,7 @@ h3 {
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--gold-dim);
+  color: var(--gold-bright);
   margin-bottom: 0.35rem;
 }
 

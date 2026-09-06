@@ -100,6 +100,12 @@ export function createFieldState(count: number, speedBiases: number[]): HorseSim
   })
 }
 
+/** Advance progress by a non-negative lap fraction (forward-only along the oval). */
+export function advanceProgress(progress: number, delta: number): number {
+  const d = Math.max(0, delta)
+  return progress + d
+}
+
 /**
  * Step the whole field together so horses pack, draft, and avoid stacking.
  * `dt` in seconds; `lapBaseSpeed` is fraction of lap per second at pace=1.
@@ -168,10 +174,12 @@ export function stepField(
     else paceMul = 1.08 + (s.pace - 1) * 0.5
     if (onTurn && s.radial < -0.2) paceMul *= 1.03 // inside path shorter feel
 
-    s.progress += lapBaseSpeed * s.pace * paceMul * dt
+    const delta = Math.max(0, lapBaseSpeed * Math.max(0.01, s.pace) * Math.max(0.01, paceMul) * dt)
+    s.progress = advanceProgress(s.progress, delta)
   }
 
-  // Separation: when two horses near same progress, ease radial apart
+  // Separation: when two horses near same progress, ease radial apart.
+  // Never decrease progress — jockeying is radial-only; longitudinal is forward-only.
   for (let i = 0; i < n; i++) {
     for (let j = i + 1; j < n; j++) {
       let dp = Math.abs(states[i].progress - states[j].progress)
@@ -184,17 +192,17 @@ export function stepField(
         const force = (0.22 - Math.abs(dr) + 0.05) * push * 1.8
         desired[i] = THREE.MathUtils.clamp(desired[i] + dir * force, -0.92, 0.92)
         desired[j] = THREE.MathUtils.clamp(desired[j] - dir * force, -0.92, 0.92)
-        // Slight longitudinal ease so they don't stay glued
+        // Nudge the ahead horse slightly farther forward (never reverse anyone)
         if (states[i].progress >= states[j].progress) {
-          states[j].progress -= 0.0008 * push
+          states[i].progress += 0.0008 * push
         } else {
-          states[i].progress -= 0.0008 * push
+          states[j].progress += 0.0008 * push
         }
       }
     }
   }
 
-  // Smooth radial motion toward desired
+  // Smooth radial motion toward desired; clamp pace/progress so horses never reverse
   for (let i = 0; i < n; i++) {
     const s = states[i]
     const err = desired[i] - s.radial
@@ -202,5 +210,8 @@ export function stepField(
     s.radial = THREE.MathUtils.clamp(s.radial + s.radialVel * dt, -0.95, 0.95)
     // Soft damp
     s.radialVel *= Math.exp(-dt * 1.2)
+    // Guard: pace must stay positive; progress only moves forward along the oval
+    if (!(s.pace > 0)) s.pace = 0.85
+    if (!Number.isFinite(s.progress)) s.progress = 0
   }
 }

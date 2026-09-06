@@ -6,8 +6,8 @@
   flex-direction: column;
   align-items: stretch;
   justify-content: flex-start;
-  padding: 0.75rem;
-  gap: 0.75rem;
+  padding: 0.55rem;
+  gap: 0.55rem;
   z-index: 2;
   background: transparent;
 }
@@ -21,51 +21,57 @@
   flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 1rem;
-  padding: 0.95rem 1.2rem;
+  gap: 0.55rem 0.85rem;
+  padding: 0.45rem 0.7rem;
   background: linear-gradient(
     165deg,
-    rgba(251, 247, 239, 0.95),
-    rgba(239, 230, 212, 0.92)
+    rgba(18, 32, 42, 0.82),
+    rgba(12, 24, 34, 0.78)
   );
-  border: 1px solid rgba(201, 162, 39, 0.5);
-  border-radius: var(--radius);
-  backdrop-filter: blur(10px);
-  color: var(--navy);
-  box-shadow: 0 8px 24px rgba(12, 22, 44, 0.18);
-  max-width: min(720px, 100%);
+  border: 1px solid rgba(201, 162, 39, 0.38);
+  border-radius: var(--radius-sm);
+  backdrop-filter: blur(12px);
+  color: var(--cream);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
+  max-width: min(380px, 100%);
 }
 
 .race-hud__top h2 {
-  margin-top: 0.35rem;
-  font-size: 1.55rem;
-  color: var(--navy);
+  margin-top: 0.15rem;
+  margin-bottom: 0;
+  font-size: 1.05rem;
+  color: var(--cream);
   font-family: var(--font-display);
   letter-spacing: 0.02em;
+  line-height: 1.2;
 }
 
 .race-hud__top .muted {
-  color: #5a6a82;
+  color: rgba(232, 236, 228, 0.62);
+  font-size: 0.78rem;
 }
 
 .race-hud__top .badge {
-  background: rgba(139, 26, 43, 0.12);
-  border-color: rgba(139, 26, 43, 0.35);
-  color: #8b1a2b;
+  background: rgba(184, 50, 72, 0.22);
+  border-color: rgba(201, 100, 110, 0.4);
+  color: #f0b4bc;
+  font-size: 0.62rem;
+  padding: 0.15rem 0.45rem;
 }
 
 .race-hud__clock {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 0.15rem;
+  gap: 0.05rem;
 }
 
 .race-hud__clock strong {
   font-family: var(--font-display);
-  font-size: 2.1rem;
-  color: var(--navy);
+  font-size: 1.25rem;
+  color: var(--gold-bright);
   letter-spacing: 0.06em;
+  line-height: 1.1;
 }
 
 .race-hud__side {
@@ -75,71 +81,73 @@
   overflow: hidden;
   background: linear-gradient(
     165deg,
-    rgba(251, 247, 239, 0.96),
-    rgba(239, 230, 212, 0.93)
+    rgba(18, 32, 42, 0.88),
+    rgba(12, 24, 34, 0.84)
   );
-  border: 1px solid rgba(201, 162, 39, 0.5);
+  border: 1px solid rgba(201, 162, 39, 0.35);
   border-radius: var(--radius);
-  backdrop-filter: blur(10px);
-  color: var(--navy);
-  box-shadow: 0 8px 24px rgba(12, 22, 44, 0.16);
-  width: min(300px, 100%);
+  backdrop-filter: blur(12px);
+  color: var(--cream);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  width: min(260px, 100%);
   margin-left: auto;
   align-self: flex-start;
 }
 
 .race-hud__side .panel-header {
-  border-bottom-color: rgba(15, 28, 58, 0.12);
+  border-bottom-color: rgba(232, 236, 228, 0.1);
+  padding: 0.7rem 0.9rem 0.55rem;
 }
 
 .race-hud__side .panel-header h2 {
-  color: var(--navy);
+  color: var(--cream);
+  font-size: 1.15rem;
 }
 
 .race-hud__side .badge {
-  background: rgba(201, 162, 39, 0.18);
-  border-color: rgba(201, 162, 39, 0.45);
-  color: #8a7020;
+  background: rgba(201, 162, 39, 0.16);
+  border-color: rgba(201, 162, 39, 0.4);
+  color: var(--gold-bright);
 }
 
 .race-hud__side .muted {
-  color: #5a6a82;
+  color: rgba(232, 236, 228, 0.58);
 }
 
 .race-hud__side strong {
-  color: var(--navy);
+  color: var(--cream);
 }
 
 .race-hud__field {
   overflow: auto;
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: 0.45rem;
   flex: 1;
 }
 
 .race-hud__row {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.65rem;
 }
 
 .race-hud__num {
-  width: 1.75rem;
-  height: 1.75rem;
+  width: 1.55rem;
+  height: 1.55rem;
   border-radius: 6px;
   display: grid;
   place-items: center;
   font-weight: 600;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: #fff;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
   flex-shrink: 0;
 }
 
 .race-hud__next {
-  padding: 0.85rem 1.25rem 1.1rem;
-  border-top: 1px solid rgba(15, 28, 58, 0.12);
+  padding: 0.65rem 0.9rem 0.85rem;
+  border-top: 1px solid rgba(232, 236, 228, 0.1);
 }
 
 @media (min-width: 900px) {
@@ -147,11 +155,11 @@
     flex-direction: row;
     align-items: flex-start;
     justify-content: space-between;
-    padding: 1rem 1.25rem;
+    padding: 0.75rem 1rem;
   }
 
   .race-hud__top {
-    max-width: min(560px, calc(100% - 340px));
+    max-width: min(340px, calc(100% - 290px));
   }
 
   .race-hud__side {
