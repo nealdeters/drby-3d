@@ -23,7 +23,7 @@ export function NavBar({ view, onNavigate, menuOpen, onToggleMenu }: Props) {
         <span className="nav__mark" aria-hidden />
         <div>
           <strong>DRBY</strong>
-          <span className="nav__sub">Middle Stands · 3D</span>
+          <span className="nav__sub">Race day · 3D</span>
         </div>
       </div>
 

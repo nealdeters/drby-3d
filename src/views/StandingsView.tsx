@@ -3,10 +3,19 @@ import { horseById, STANDINGS } from '../data/fakeSeason'
 export function StandingsView() {
   return (
     <div className="view-scroll">
+      <header className="view-hero">
+        <div>
+          <span className="view-kicker">Leaderboard</span>
+          <h1>Standings</h1>
+          <p>Points, wins, and starts across the DRBY 2026 campaign.</p>
+        </div>
+        <span className="badge">DRBY 2026 · fake</span>
+      </header>
+
       <div className="panel">
         <div className="panel-header">
-          <h2>Standings</h2>
-          <span className="badge">DRBY 2026 · fake</span>
+          <h2>Championship table</h2>
+          <span className="muted">{STANDINGS.length} horses</span>
         </div>
         <div className="panel-body" style={{ overflowX: 'auto' }}>
           <table className="table">
@@ -25,7 +34,9 @@ export function StandingsView() {
                 const horse = horseById(row.horseId)
                 return (
                   <tr key={row.horseId}>
-                    <td>{row.rank}</td>
+                    <td>
+                      <strong>{row.rank}</strong>
+                    </td>
                     <td>
                       <span
                         style={{
@@ -35,6 +46,7 @@ export function StandingsView() {
                           borderRadius: 2,
                           background: horse?.jersey,
                           marginRight: 8,
+                          verticalAlign: 'middle',
                         }}
                       />
                       <strong>

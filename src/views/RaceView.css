@@ -2,12 +2,18 @@
   position: relative;
   flex: 1;
   min-height: 0;
+  width: 100%;
   background: #87b8e8;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
 }
 
 .race-view__canvas {
   position: absolute;
   inset: 0;
+  width: 100%;
+  height: 100%;
 }
 
 .race-view__canvas canvas {

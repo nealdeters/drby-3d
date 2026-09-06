@@ -367,30 +367,11 @@ function FinishPoles() {
           ))}
         </group>
       ))}
+      {/* Thin crossbar only — no giant billboard */}
       <mesh position={[mid.x, 2.85, mid.z]} castShadow>
         <boxGeometry args={[0.16, 0.16, gateSpan + 0.2]} />
         <meshStandardMaterial color="#142038" metalness={0.2} roughness={0.4} />
       </mesh>
-      {/* FINISH — large, cream on navy, faces camera/grandstand */}
-      <SignBoard
-        position={[mid.x, 3.55, mid.z + 0.2]}
-        rotation={[0, 0, 0]}
-        width={7.5}
-        height={2.0}
-        label="FINISH"
-        sublabel="START / WIRE"
-        face="navy"
-      />
-      {/* Mirror board facing backstretch */}
-      <SignBoard
-        position={[mid.x, 3.55, mid.z - 0.2]}
-        rotation={[0, Math.PI, 0]}
-        width={7.5}
-        height={2.0}
-        label="FINISH"
-        sublabel="START / WIRE"
-        face="navy"
-      />
     </group>
   )
 }
@@ -435,63 +416,76 @@ function FurlongMarkers() {
 }
 
 function InfieldTote() {
+  // Oversized cream program board — readable from full-oval camera (~52y / 48z)
   return (
-    <group position={[0, 0, 0]}>
-      {/* Pedestal */}
-      <mesh position={[0, 1.1, 0]} castShadow>
-        <boxGeometry args={[1.2, 2.2, 0.8]} />
+    <group position={[0, 0, 0]} rotation={[-0.12, 0, 0]}>
+      <mesh position={[0, 1.4, 0]} castShadow>
+        <boxGeometry args={[2.2, 2.8, 1.2]} />
         <meshStandardMaterial color="#e8e0d0" roughness={0.65} />
       </mesh>
-      {/* Main board — cream face, navy type, gold trim */}
-      <mesh position={[0, 4.0, 0]} castShadow>
-        <boxGeometry args={[12, 4.2, 0.4]} />
-        <meshStandardMaterial color="#f7f2e6" roughness={0.5} />
+      <mesh position={[0, 5.4, 0]} castShadow>
+        <boxGeometry args={[18, 6.4, 0.45]} />
+        <meshStandardMaterial color="#faf6ec" roughness={0.42} />
       </mesh>
-      <mesh position={[0, 6.2, 0]}>
-        <boxGeometry args={[12.4, 0.28, 0.55]} />
+      {/* Gold frame */}
+      <mesh position={[0, 8.7, 0.02]}>
+        <boxGeometry args={[18.6, 0.38, 0.6]} />
+        <meshStandardMaterial color="#c9a227" metalness={0.5} roughness={0.28} />
+      </mesh>
+      <mesh position={[0, 2.1, 0.02]}>
+        <boxGeometry args={[18.6, 0.32, 0.6]} />
+        <meshStandardMaterial color="#142038" roughness={0.45} />
+      </mesh>
+      <mesh position={[-9.15, 5.4, 0.02]}>
+        <boxGeometry args={[0.28, 6.4, 0.55]} />
         <meshStandardMaterial color="#c9a227" metalness={0.45} roughness={0.3} />
       </mesh>
-      <mesh position={[0, 1.85, 0]}>
-        <boxGeometry args={[12.4, 0.22, 0.55]} />
-        <meshStandardMaterial color="#142038" roughness={0.5} />
+      <mesh position={[9.15, 5.4, 0.02]}>
+        <boxGeometry args={[0.28, 6.4, 0.55]} />
+        <meshStandardMaterial color="#c9a227" metalness={0.45} roughness={0.3} />
       </mesh>
       <Text
-        position={[0, 5.0, 0.26]}
-        fontSize={1.15}
-        color="#142038"
+        position={[0, 6.85, 0.28]}
+        fontSize={2.15}
+        color="#0f1c3a"
         anchorX="center"
         anchorY="middle"
-        outlineWidth={0.03}
-        outlineColor="#f7f2e6"
+        outlineWidth={0.06}
+        outlineColor="#faf6ec"
       >
         DRBY
       </Text>
       <Text
-        position={[0, 3.9, 0.26]}
-        fontSize={0.62}
-        color="#1e5c2a"
+        position={[0, 5.15, 0.28]}
+        fontSize={1.05}
+        color="#1a2744"
         anchorX="center"
         anchorY="middle"
+        outlineWidth={0.025}
+        outlineColor="#faf6ec"
       >
         EVENING FEATURE
       </Text>
       <Text
-        position={[0, 2.85, 0.26]}
-        fontSize={0.5}
-        color="#142038"
+        position={[0, 3.75, 0.28]}
+        fontSize={0.92}
+        color="#0f1c3a"
         anchorX="center"
         anchorY="middle"
+        outlineWidth={0.02}
+        outlineColor="#faf6ec"
       >
         1 MILE  ·  DIRT
       </Text>
-      {/* Reverse face for far side */}
       <Text
-        position={[0, 4.2, -0.26]}
+        position={[0, 5.4, -0.28]}
         rotation={[0, Math.PI, 0]}
-        fontSize={1.0}
-        color="#142038"
+        fontSize={1.8}
+        color="#0f1c3a"
         anchorX="center"
         anchorY="middle"
+        outlineWidth={0.05}
+        outlineColor="#faf6ec"
       >
         DRBY
       </Text>

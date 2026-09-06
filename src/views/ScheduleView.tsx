@@ -3,10 +3,19 @@ import { formatPurse, formatWhen, RACES, trackById } from '../data/fakeSeason'
 export function ScheduleView() {
   return (
     <div className="view-scroll">
+      <header className="view-hero">
+        <div>
+          <span className="view-kicker">Official program</span>
+          <h1>Race Schedule</h1>
+          <p>Card of the day — purses, tracks, and post times for the DRBY season.</p>
+        </div>
+        <span className="badge">Fake season data</span>
+      </header>
+
       <div className="panel">
         <div className="panel-header">
-          <h2>Race Schedule</h2>
-          <span className="badge">Fake season data</span>
+          <h2>Today&apos;s card</h2>
+          <span className="muted">{RACES.length} races</span>
         </div>
         <div className="panel-body" style={{ overflowX: 'auto' }}>
           <table className="table">
@@ -31,7 +40,9 @@ export function ScheduleView() {
                     <td>{track?.name ?? r.trackId}</td>
                     <td>{formatPurse(r.purse)}</td>
                     <td>
-                      <span className="badge">{r.status}</span>
+                      <span className="badge" data-status={r.status}>
+                        {r.status}
+                      </span>
                     </td>
                   </tr>
                 )

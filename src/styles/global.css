@@ -1,34 +1,46 @@
 :root {
   color-scheme: light;
-  /* Affluent race-day program: cream / navy / gold */
-  --bg-deep: #0f1c3a;
-  --bg-panel: #152447;
-  --bg-elevated: #1a2d55;
-  --bg-card: #1e335c;
-  --cream: #f5f0e6;
-  --cream-soft: #ebe4d4;
-  --navy: #0f1c3a;
+  /* Race-day program: cream paper, navy ink, gold foil */
+  --cream: #f7f1e4;
+  --cream-soft: #efe6d4;
+  --cream-deep: #e4d8c0;
+  --paper: #fbf7ef;
+  --ink: #142038;
+  --ink-soft: #2a3a58;
+  --navy: #142038;
   --navy-mid: #1a2744;
+  --navy-deep: #0c162c;
   --gold: #c9a227;
-  --gold-bright: #e0bf4a;
+  --gold-bright: #d4b03a;
   --gold-dim: #8a7020;
+  --muted: #5c6b82;
+  --muted-light: #8a96a8;
+  --accent: #8b1a2b;
+  --accent-soft: #b83248;
+  --success: #2f7a32;
+  --danger: #c44536;
+  --track-dirt: #d2b48c;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --font-display: 'Fraunces', 'Cormorant Garamond', Georgia, serif;
+  --font-body: 'Source Sans 3', 'IBM Plex Sans', system-ui, sans-serif;
+  --shadow-soft: 0 8px 28px rgba(20, 32, 56, 0.08);
+  --shadow-card: 0 4px 18px rgba(20, 32, 56, 0.07);
+  --border-gold: 1px solid rgba(201, 162, 39, 0.45);
+  --border-ink: 1px solid rgba(20, 32, 56, 0.12);
+  /* Legacy aliases used by Race HUD / 3D overlays */
+  --bg-deep: var(--navy-deep);
+  --bg-panel: var(--navy-mid);
+  --bg-elevated: #243560;
+  --bg-card: var(--paper);
   --brass: var(--gold);
   --brass-bright: var(--gold-bright);
   --brass-dim: var(--gold-dim);
   --warm: var(--cream);
-  --muted: #a8b4c8;
-  --accent: #8b1a2b;
-  --accent-soft: #b83248;
-  --wood: #1a2744;
+  --wood: var(--navy-mid);
   --wood-light: #243560;
-  --track-dirt: #d2b48c;
-  --success: #3d8f3a;
-  --danger: #c44536;
-  --radius: 10px;
-  --font-display: 'Cormorant Garamond', Georgia, serif;
-  --font-body: 'IBM Plex Sans', system-ui, sans-serif;
-  --shadow-panel: 0 10px 36px rgba(8, 16, 36, 0.45);
-  --border-brass: 1px solid rgba(201, 162, 39, 0.4);
+  --shadow-panel: var(--shadow-soft);
+  --border-brass: var(--border-gold);
 }
 
 *,
@@ -47,12 +59,30 @@ body,
 
 body {
   font-family: var(--font-body);
-  background: var(--bg-deep);
-  color: var(--cream);
+  background: var(--cream);
+  color: var(--ink);
   -webkit-font-smoothing: antialiased;
   background-image:
-    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(201, 162, 39, 0.14), transparent),
-    radial-gradient(ellipse 55% 40% at 100% 100%, rgba(139, 26, 43, 0.1), transparent);
+    radial-gradient(ellipse 90% 55% at 50% -15%, rgba(201, 162, 39, 0.12), transparent 55%),
+    radial-gradient(ellipse 50% 40% at 100% 100%, rgba(139, 26, 43, 0.05), transparent 50%),
+    linear-gradient(180deg, var(--paper) 0%, var(--cream) 40%, var(--cream-soft) 100%);
+}
+
+/* Hide Netlify "Powered by" / HUD badge injected at the edge */
+#nl-hud-frame,
+#nl-badge-frame,
+iframe[id^='nl-'],
+iframe[src*='netlify'],
+[data-nf-variant],
+a[href*='netlify.com'][class*='badge'],
+.netlify-badge,
+#netlify-badge {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 button,
@@ -63,7 +93,7 @@ select {
 }
 
 a {
-  color: var(--gold-bright);
+  color: var(--accent);
 }
 
 h1,
@@ -71,8 +101,9 @@ h2,
 h3 {
   font-family: var(--font-display);
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
   margin: 0 0 0.5rem;
+  color: var(--ink);
 }
 
 .app-shell {
@@ -87,13 +118,14 @@ h3 {
   min-height: 0;
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
 .panel {
-  background: linear-gradient(165deg, rgba(26, 45, 85, 0.96), rgba(15, 28, 58, 0.94));
-  border: var(--border-brass);
+  background: var(--paper);
+  border: var(--border-ink);
   border-radius: var(--radius);
-  box-shadow: var(--shadow-panel);
+  box-shadow: var(--shadow-card);
 }
 
 .panel-header {
@@ -101,95 +133,142 @@ h3 {
   align-items: baseline;
   justify-content: space-between;
   gap: 1rem;
-  padding: 1rem 1.25rem 0.75rem;
-  border-bottom: 1px solid rgba(201, 162, 39, 0.22);
+  padding: 1.15rem 1.35rem 0.85rem;
+  border-bottom: 1px solid rgba(20, 32, 56, 0.1);
 }
 
 .panel-header h2 {
-  font-size: 1.5rem;
-  color: var(--gold-bright);
+  font-size: 1.75rem;
+  color: var(--ink);
+  font-weight: 650;
 }
 
 .panel-body {
-  padding: 1rem 1.25rem 1.25rem;
+  padding: 1rem 1.35rem 1.35rem;
 }
 
 .muted {
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: 0.92rem;
 }
 
 .badge {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.2rem 0.55rem;
+  padding: 0.22rem 0.6rem;
   border-radius: 999px;
-  background: rgba(201, 162, 39, 0.16);
+  background: rgba(201, 162, 39, 0.14);
   border: 1px solid rgba(201, 162, 39, 0.4);
-  color: var(--gold-bright);
-  font-size: 0.75rem;
-  font-weight: 500;
-  letter-spacing: 0.04em;
+  color: var(--gold-dim);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+.badge[data-status='live'],
+.badge.is-live {
+  background: rgba(139, 26, 43, 0.1);
+  border-color: rgba(139, 26, 43, 0.35);
+  color: var(--accent);
+}
+
+.badge[data-status='final'],
+.badge.is-final {
+  background: rgba(20, 32, 56, 0.06);
+  border-color: rgba(20, 32, 56, 0.18);
+  color: var(--ink-soft);
+}
+
+.badge[data-status='upcoming'],
+.badge.is-upcoming {
+  background: rgba(47, 122, 50, 0.1);
+  border-color: rgba(47, 122, 50, 0.3);
+  color: var(--success);
 }
 
 .table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.92rem;
+  font-size: 0.95rem;
 }
 
 .table th,
 .table td {
   text-align: left;
-  padding: 0.65rem 0.5rem;
-  border-bottom: 1px solid rgba(201, 162, 39, 0.12);
+  padding: 0.8rem 0.55rem;
+  border-bottom: 1px solid rgba(20, 32, 56, 0.08);
+  color: var(--ink);
 }
 
 .table th {
-  color: var(--gold);
-  font-weight: 500;
-  font-size: 0.75rem;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.72rem;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.07em;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
 }
 
 .table tr:hover td {
   background: rgba(201, 162, 39, 0.06);
 }
 
+.table strong {
+  font-weight: 600;
+  color: var(--ink);
+}
+
 .grid-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.1rem;
 }
 
 .card {
-  background: var(--bg-card);
-  border: var(--border-brass);
+  background: var(--paper);
+  border: var(--border-ink);
   border-radius: var(--radius);
-  padding: 1rem 1.1rem;
+  padding: 1.15rem 1.2rem 1.25rem;
+  box-shadow: var(--shadow-card);
+  position: relative;
+  overflow: hidden;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--gold), var(--gold-bright), var(--gold));
 }
 
 .card h3 {
-  color: var(--gold-bright);
-  font-size: 1.25rem;
+  color: var(--ink);
+  font-size: 1.35rem;
+  font-weight: 650;
 }
 
 .btn {
   appearance: none;
-  border: var(--border-brass);
-  background: linear-gradient(180deg, var(--wood-light), var(--wood));
-  color: var(--cream);
-  border-radius: 8px;
+  border: var(--border-gold);
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: var(--radius-sm);
   padding: 0.55rem 1rem;
   cursor: pointer;
-  transition: border-color 0.15s, transform 0.1s;
+  transition: border-color 0.15s, transform 0.1s, background 0.15s;
 }
 
 .btn:hover {
   border-color: var(--gold);
+  background: var(--cream-soft);
 }
 
 .btn:active {
@@ -198,18 +277,51 @@ h3 {
 
 .btn-primary {
   background: linear-gradient(180deg, var(--accent-soft), var(--accent));
-  border-color: rgba(184, 50, 72, 0.5);
+  border-color: rgba(184, 50, 72, 0.45);
+  color: #fff;
   font-weight: 600;
 }
 
 .view-scroll {
   flex: 1;
   overflow: auto;
-  padding: 1rem;
+  padding: 1.25rem 1rem 2rem;
+}
+
+.view-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.view-hero h1 {
+  font-size: clamp(1.85rem, 3vw, 2.4rem);
+  margin: 0;
+  line-height: 1.15;
+}
+
+.view-hero p {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  max-width: 36rem;
+  line-height: 1.45;
+}
+
+.view-kicker {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold-dim);
+  margin-bottom: 0.35rem;
 }
 
 @media (min-width: 900px) {
   .view-scroll {
-    padding: 1.5rem 2rem;
+    padding: 1.75rem 2.25rem 2.5rem;
   }
 }
