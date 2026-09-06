@@ -15,6 +15,8 @@ type Props = {
   /** First future (!completed && startTime > now) race for countdown */
   nextRace: RaceEntry | null
   trackName?: string
+  /** Resolved racing-strip surface (asphalt / dirt / turf) for tote chip */
+  trackSurface?: 'asphalt' | 'dirt' | 'turf' | 'grass'
   /** Overall progress 0–1 per horse id — read on a throttle, never every frame */
   progressRef?: MutableRefObject<Record<string, number>>
 }
@@ -54,6 +56,7 @@ export function RaceHUD({
   currentRace,
   nextRace,
   trackName,
+  trackSurface,
   progressRef,
 }: Props) {
   const live =
@@ -155,6 +158,22 @@ export function RaceHUD({
             {live && live.purse > 0 ? ` · ${formatPurse(live.purse)} purse` : ''}
             {isRacing ? ' · racing' : ''}
           </p>
+          {trackSurface && (
+            <div className="race-hud__surface muted" title={`Surface: ${trackSurface}`}>
+              <span
+                className="race-hud__surface-chip"
+                data-surface={trackSurface === 'grass' ? 'turf' : trackSurface}
+                aria-hidden
+              />
+              <span>
+                {trackSurface === 'asphalt'
+                  ? 'Asphalt'
+                  : trackSurface === 'dirt'
+                    ? 'Dirt'
+                    : 'Grass'}
+              </span>
+            </div>
+          )}
         </div>
         <div className="race-hud__clock">
           {isRacing ? (

@@ -6,9 +6,9 @@ import { TRACK, ovalPoint } from './trackMath'
 /** Dirt racing strip — darker brown than the old sandy tan */
 const DIRT = '#8b5a2b'
 const DIRT_WEAR = '#7a4e24'
-/** Asphalt racing strip — cool slate (stays gray under warm venue lights) */
-const ASPHALT = '#1e293b'
-const ASPHALT_WEAR = '#334155'
+/** Asphalt racing strip — near-black charcoal (stays gray under warm venue lights) */
+const ASPHALT = '#0b0d10'
+const ASPHALT_WEAR = '#2a2f38'
 const RAIL = '#f5f5f0'
 const TURF = '#3d8f3a'
 const TURF_DEEP = '#2f7a32'
@@ -435,14 +435,41 @@ function racingSurfaceColors(surface: TrackSurface): {
   wearOpacity: number
   roughness: number
   metalness: number
+  emissive: string
+  emissiveIntensity: number
 } {
   if (surface === 'asphalt') {
-    return { base: ASPHALT, wear: ASPHALT_WEAR, wearOpacity: 0.4, roughness: 0.58, metalness: 0.22 }
+    // Near-black charcoal + slight cool emissive so warm sun (#ffe8b8) / sunset env don't brown it
+    return {
+      base: ASPHALT,
+      wear: ASPHALT_WEAR,
+      wearOpacity: 0.35,
+      roughness: 0.72,
+      metalness: 0.04,
+      emissive: '#1a222c',
+      emissiveIntensity: 0.08,
+    }
   }
   if (surface === 'turf' || surface === 'grass') {
-    return { base: TURF_RACE, wear: TURF_RACE_WEAR, wearOpacity: 0.4, roughness: 0.92, metalness: 0 }
+    return {
+      base: TURF_RACE,
+      wear: TURF_RACE_WEAR,
+      wearOpacity: 0.4,
+      roughness: 0.92,
+      metalness: 0,
+      emissive: '#000000',
+      emissiveIntensity: 0,
+    }
   }
-  return { base: DIRT, wear: DIRT_WEAR, wearOpacity: 0.5, roughness: 0.98, metalness: 0 }
+  return {
+    base: DIRT,
+    wear: DIRT_WEAR,
+    wearOpacity: 0.5,
+    roughness: 0.98,
+    metalness: 0,
+    emissive: '#000000',
+    emissiveIntensity: 0,
+  }
 }
 
 export function Track({ surface = 'dirt' }: { surface?: TrackSurface }) {
@@ -512,6 +539,8 @@ export function Track({ surface = 'dirt' }: { surface?: TrackSurface }) {
           color={raceColors.base}
           roughness={raceColors.roughness}
           metalness={raceColors.metalness}
+          emissive={raceColors.emissive}
+          emissiveIntensity={raceColors.emissiveIntensity}
         />
       </mesh>
       <mesh geometry={wearGeo} position={[0, 0.005, 0]} receiveShadow>

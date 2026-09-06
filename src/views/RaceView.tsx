@@ -101,6 +101,27 @@ export function RaceView() {
       const n = normalize(c)
       if (n) return n
     }
+
+    // Last resort by track name when surface embed is missing
+    const nameHint = (
+      season.currentRace?.track?.name ??
+      (trackId ? season.liveTracks.find((t) => t.id === trackId)?.name : undefined) ??
+      (trackId ? season.trackById(trackId)?.name : undefined) ??
+      (currentEntry ? season.trackById(currentEntry.trackId)?.name : undefined) ??
+      ''
+    )
+      .toLowerCase()
+      .trim()
+    if (nameHint.includes('oval circuit')) {
+      return 'asphalt' as const
+    }
+    if (nameHint.includes('dirt derby')) {
+      return 'dirt' as const
+    }
+    if (nameHint.includes('grassland')) {
+      return 'turf' as const
+    }
+
     return 'dirt' as const
   }, [
     season.currentRace,
@@ -137,6 +158,7 @@ export function RaceView() {
         currentRace={currentEntry}
         nextRace={countdownTarget}
         trackName={trackName}
+        trackSurface={trackSurface}
         progressRef={feed.progressRef}
       />
     </div>
