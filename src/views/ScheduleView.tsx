@@ -1,6 +1,9 @@
-import { formatPurse, formatWhen, RACES, trackById } from '../data/fakeSeason'
+import { formatPurse, formatWhen } from '../data/fakeSeason'
+import { useLiveData } from '../context/LiveDataContext'
 
 export function ScheduleView() {
+  const { mode, races, trackById, loading } = useLiveData()
+
   return (
     <div className="view-scroll">
       <header className="view-hero">
@@ -9,13 +12,17 @@ export function ScheduleView() {
           <h1>Race Schedule</h1>
           <p>Card of the day — purses, tracks, and post times for the DRBY season.</p>
         </div>
-        <span className="badge">Fake season data</span>
+        <span className="badge" data-mode={mode}>
+          {mode === 'live' ? 'Live API' : 'Demo data'}
+        </span>
       </header>
 
       <div className="panel">
         <div className="panel-header">
-          <h2>Today&apos;s card</h2>
-          <span className="muted">{RACES.length} races</span>
+          <h2>{mode === 'live' ? 'Season card' : "Today's card"}</h2>
+          <span className="muted">
+            {loading ? 'Loading…' : `${races.length} races`}
+          </span>
         </div>
         <div className="panel-body" style={{ overflowX: 'auto' }}>
           <table className="table">
@@ -29,7 +36,7 @@ export function ScheduleView() {
               </tr>
             </thead>
             <tbody>
-              {RACES.map((r) => {
+              {races.map((r) => {
                 const track = trackById(r.trackId)
                 return (
                   <tr key={r.id}>
@@ -38,7 +45,7 @@ export function ScheduleView() {
                       <strong>{r.name}</strong>
                     </td>
                     <td>{track?.name ?? r.trackId}</td>
-                    <td>{formatPurse(r.purse)}</td>
+                    <td>{r.purse > 0 ? formatPurse(r.purse) : '—'}</td>
                     <td>
                       <span className="badge" data-status={r.status}>
                         {r.status}

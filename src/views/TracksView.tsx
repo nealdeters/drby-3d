@@ -1,6 +1,8 @@
-import { TRACKS } from '../data/fakeSeason'
+import { useLiveData } from '../context/LiveDataContext'
 
 export function TracksView() {
+  const { mode, tracks, loading } = useLiveData()
+
   return (
     <div className="view-scroll">
       <header className="view-hero">
@@ -9,11 +11,15 @@ export function TracksView() {
           <h1>Tracks</h1>
           <p>Dirt ovals and turf courses on the DRBY map — surfaces, distances, and local color.</p>
         </div>
-        <span className="badge">Program cards</span>
+        <span className="badge" data-mode={mode}>
+          {mode === 'live' ? 'Live API' : 'Program cards'}
+        </span>
       </header>
 
+      {loading && <p className="muted">Loading tracks…</p>}
+
       <div className="grid-cards">
-        {TRACKS.map((t) => (
+        {tracks.map((t) => (
           <article key={t.id} className="card">
             <span className="badge">
               {t.surface} · {t.lengthFurlongs}f

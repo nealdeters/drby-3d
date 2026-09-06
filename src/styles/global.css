@@ -333,3 +333,15 @@ h3 {
     padding: 1.75rem 2.25rem 2.5rem;
   }
 }
+
+
+.badge[data-mode="live"] {
+  background: rgba(46, 125, 70, 0.22);
+  border-color: rgba(90, 170, 110, 0.45);
+  color: #b8e0c0;
+}
+.badge[data-mode="demo"] {
+  background: rgba(120, 100, 60, 0.22);
+  border-color: rgba(180, 150, 80, 0.4);
+  color: #e0d0a0;
+}

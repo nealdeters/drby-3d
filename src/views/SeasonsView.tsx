@@ -1,6 +1,8 @@
-import { SEASONS } from '../data/fakeSeason'
+import { useLiveData } from '../context/LiveDataContext'
 
 export function SeasonsView() {
+  const { mode, seasons, loading } = useLiveData()
+
   return (
     <div className="view-scroll">
       <header className="view-hero">
@@ -9,10 +11,15 @@ export function SeasonsView() {
           <h1>Seasons</h1>
           <p>Past, present, and upcoming DRBY circuits — pick a meet and follow the card.</p>
         </div>
+        <span className="badge" data-mode={mode}>
+          {mode === 'live' ? 'Live API' : 'Demo'}
+        </span>
       </header>
 
+      {loading && <p className="muted">Loading seasons…</p>}
+
       <div className="grid-cards">
-        {SEASONS.map((s) => (
+        {seasons.map((s) => (
           <article key={s.id} className="card">
             <span
               className="badge"

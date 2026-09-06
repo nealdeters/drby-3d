@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { NavBar } from './components/layout/NavBar'
+import { LiveDataProvider } from './context/LiveDataContext'
 import { useView } from './hooks/useView'
 import { RaceView } from './views/RaceView'
 import { ScheduleView } from './views/ScheduleView'
@@ -12,23 +13,25 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false)
 
   return (
-    <div className="app-shell">
-      <NavBar
-        view={view}
-        onNavigate={(v) => {
-          setView(v)
-          setMenuOpen(false)
-        }}
-        menuOpen={menuOpen}
-        onToggleMenu={() => setMenuOpen((o) => !o)}
-      />
-      <main className="main-content">
-        {view === 'race' && <RaceView />}
-        {view === 'schedule' && <ScheduleView />}
-        {view === 'standings' && <StandingsView />}
-        {view === 'seasons' && <SeasonsView />}
-        {view === 'tracks' && <TracksView />}
-      </main>
-    </div>
+    <LiveDataProvider>
+      <div className="app-shell">
+        <NavBar
+          view={view}
+          onNavigate={(v) => {
+            setView(v)
+            setMenuOpen(false)
+          }}
+          menuOpen={menuOpen}
+          onToggleMenu={() => setMenuOpen((o) => !o)}
+        />
+        <main className="main-content">
+          {view === 'race' && <RaceView />}
+          {view === 'schedule' && <ScheduleView />}
+          {view === 'standings' && <StandingsView />}
+          {view === 'seasons' && <SeasonsView />}
+          {view === 'tracks' && <TracksView />}
+        </main>
+      </div>
+    </LiveDataProvider>
   )
 }

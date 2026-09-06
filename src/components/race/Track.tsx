@@ -12,6 +12,11 @@ const CREAM = '#f3eee3'
 const STONE = '#e8e0d0'
 const COLUMN = '#f8f4ec'
 const NAVY = '#1a2744'
+/** Warm wood seating / decking (oak · cedar) */
+const WOOD = '#a67c52'
+const WOOD_DARK = '#7a5230'
+const WOOD_LIGHT = '#c4a06a'
+const WOOD_DECK = '#8b5e3c'
 const GOLD = '#c9a227'
 const HEDGE = '#2d6b2e'
 const FLOWER_PINK = '#e89ab0'
@@ -538,35 +543,35 @@ export function Track() {
         <meshStandardMaterial color={GOLD} metalness={0.5} roughness={0.3} />
       </mesh>
 
-      {/* Turf + cream apron flush to outer rail (~z 15.3) — no dark gap */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 15.85]} receiveShadow>
-        <planeGeometry args={[46, 1.05]} />
+      {/* Clear turf + apron gap past outer rail (~z 15.3) — stands set back so dirt stays clear */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 16.8]} receiveShadow>
+        <planeGeometry args={[48, 2.6]} />
         <meshStandardMaterial color="#3d8f3a" roughness={0.95} />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 16.85]} receiveShadow>
-        <planeGeometry args={[44, 1.55]} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 19.0]} receiveShadow>
+        <planeGeometry args={[46, 2.2]} />
         <meshStandardMaterial color="#efe6d4" roughness={0.92} />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.025, 16.85]} receiveShadow>
-        <planeGeometry args={[42, 0.14]} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.025, 19.0]} receiveShadow>
+        <planeGeometry args={[44, 0.14]} />
         <meshStandardMaterial color="#e0d4bc" roughness={0.88} />
       </mesh>
       {/* Lawn filling bottom-of-frame past the stands (toward camera) */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 30]} receiveShadow>
-        <planeGeometry args={[90, 28]} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 34]} receiveShadow>
+        <planeGeometry args={[90, 32]} />
         <meshStandardMaterial color="#3a8a38" roughness={1} />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 40]} receiveShadow>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 44]} receiveShadow>
         <planeGeometry args={[100, 18]} />
         <meshStandardMaterial color="#2f7a32" roughness={1} />
       </mesh>
 
-      {/* Near grandstand — pulled flush toward outer rail; thin cream canopy (no navy asphalt slab) */}
-      <group position={[0, 0, 17.55]}>
+      {/* Near grandstand — set back from outer rail; warm wood tiers; thin canopy (no navy asphalt slab) */}
+      <group position={[0, 0, 21.2]}>
         {[0, 1, 2, 3, 4, 5, 6, 7].map((row) => (
           <mesh key={row} position={[0, 0.35 + row * 0.48, row * 0.55]} castShadow receiveShadow>
             <boxGeometry args={[38 - row * 0.55, 0.28, 0.8]} />
-            <meshStandardMaterial color={row % 2 ? STONE : CREAM} roughness={0.75} />
+            <meshStandardMaterial color={row % 2 ? WOOD_DARK : WOOD} roughness={0.82} />
           </mesh>
         ))}
         <CrowdDots width={34} depth={4.0} rows={7} cols={30} baseY={0.35} baseZ={0.1} />
@@ -578,11 +583,11 @@ export function Track() {
             </mesh>
             <mesh position={[0, 4.55, 0]}>
               <boxGeometry args={[0.65, 0.24, 0.65]} />
-              <meshStandardMaterial color={STONE} roughness={0.6} />
+              <meshStandardMaterial color={WOOD_LIGHT} roughness={0.7} />
             </mesh>
             <mesh position={[0, 0.12, 0]}>
               <boxGeometry args={[0.6, 0.22, 0.6]} />
-              <meshStandardMaterial color={STONE} roughness={0.65} />
+              <meshStandardMaterial color={WOOD_DECK} roughness={0.75} />
             </mesh>
           </group>
         ))}
@@ -599,9 +604,10 @@ export function Track() {
           <boxGeometry args={[37, 4.8, 0.45]} />
           <meshStandardMaterial color={CREAM} roughness={0.7} />
         </mesh>
+        {/* Wood fascia / rail at front of stand */}
         <mesh position={[0, 0.5, -1.05]} castShadow receiveShadow>
           <boxGeometry args={[38.5, 1.0, 0.4]} />
-          <meshStandardMaterial color={CREAM} roughness={0.7} />
+          <meshStandardMaterial color={WOOD_DECK} roughness={0.78} />
         </mesh>
         <mesh position={[0, 1.05, -1.05]}>
           <boxGeometry args={[38.7, 0.14, 0.45]} />
@@ -609,34 +615,34 @@ export function Track() {
         </mesh>
       </group>
 
-      {/* Extended lower seating / patio beyond main stand — fills bottom of frame */}
-      <group position={[0, 0, 23.2]}>
+      {/* Extended lower wood seating / patio beyond main stand — fills bottom of frame */}
+      <group position={[0, 0, 27.0]}>
         {[0, 1, 2, 3].map((row) => (
           <mesh key={row} position={[0, 0.22 + row * 0.38, row * 0.55]} castShadow receiveShadow>
             <boxGeometry args={[44 - row * 0.4, 0.22, 0.75]} />
-            <meshStandardMaterial color={row % 2 ? '#e8e0d0' : '#f3eee3'} roughness={0.8} />
+            <meshStandardMaterial color={row % 2 ? WOOD_DARK : WOOD_LIGHT} roughness={0.85} />
           </mesh>
         ))}
         <CrowdDots width={40} depth={2.2} rows={4} cols={34} baseY={0.22} baseZ={0.1} />
         <mesh position={[0, 0.06, 2.4]} receiveShadow>
           <boxGeometry args={[48, 0.12, 4.5]} />
-          <meshStandardMaterial color="#efe6d4" roughness={0.95} />
+          <meshStandardMaterial color={WOOD_DECK} roughness={0.92} />
         </mesh>
       </group>
 
-      {/* Landscaping along apron — hedges + blooms (outside oval, no clip) */}
-      <FlowerBed position={[-12, 0, 16.35]} width={9} />
-      <FlowerBed position={[12, 0, 16.35]} width={9} />
-      <FlowerBed position={[0, 0, 16.35]} width={7} />
-      <FlowerBed position={[-18, 0, 17.9]} width={6} />
-      <FlowerBed position={[18, 0, 17.9]} width={6} />
-      <HedgeBox position={[-20, 0.4, 16.7]} size={[8, 0.8, 0.55]} />
-      <HedgeBox position={[20, 0.4, 16.7]} size={[8, 0.8, 0.55]} />
-      <HedgeBox position={[0, 0.35, 17.3]} size={[34, 0.55, 0.4]} />
-      <HedgeBox position={[-22, 0.45, 20.5]} size={[0.7, 0.9, 8]} />
-      <HedgeBox position={[22, 0.45, 20.5]} size={[0.7, 0.9, 8]} />
-      <FlowerBed position={[-8, 0, 26.4]} width={10} />
-      <FlowerBed position={[8, 0, 26.4]} width={10} />
+      {/* Landscaping along apron — hedges + blooms (outside oval, clear of dirt) */}
+      <FlowerBed position={[-12, 0, 18.4]} width={9} />
+      <FlowerBed position={[12, 0, 18.4]} width={9} />
+      <FlowerBed position={[0, 0, 18.4]} width={7} />
+      <FlowerBed position={[-18, 0, 20.0]} width={6} />
+      <FlowerBed position={[18, 0, 20.0]} width={6} />
+      <HedgeBox position={[-20, 0.4, 18.8]} size={[8, 0.8, 0.55]} />
+      <HedgeBox position={[20, 0.4, 18.8]} size={[8, 0.8, 0.55]} />
+      <HedgeBox position={[0, 0.35, 20.35]} size={[34, 0.55, 0.4]} />
+      <HedgeBox position={[-22, 0.45, 24.0]} size={[0.7, 0.9, 8]} />
+      <HedgeBox position={[22, 0.45, 24.0]} size={[0.7, 0.9, 8]} />
+      <FlowerBed position={[-8, 0, 30.2]} width={10} />
+      <FlowerBed position={[8, 0, 30.2]} width={10} />
 
       <HedgeBox position={[-8, 0.35, 0]} size={[1.2, 0.7, 3.5]} />
       <HedgeBox position={[8, 0.35, 0]} size={[1.2, 0.7, 3.5]} />
