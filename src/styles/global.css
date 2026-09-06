@@ -1,48 +1,53 @@
 :root {
   color-scheme: dark;
-  /* Soft dusk race-day: charcoal-sage ground, dim cards, light ink, gold foil */
-  --cream: #e8ece4;
-  --cream-soft: #d5dcd0;
-  --cream-deep: #b8c2b0;
-  --paper: #1a2830;
-  --turf-soft: #121c22;
-  --turf-mid: #0e171c;
-  --turf-deep: #0a1216;
-  --sage: #152028;
-  --ink: #e8ece4;
-  --ink-soft: #c5cec0;
-  --navy: #142038;
-  --navy-mid: #1a2744;
-  --navy-deep: #0c162c;
-  --gold: #c9a227;
-  --gold-bright: #d4b03a;
-  --gold-dim: #b8962e;
-  --muted: #8a9688;
-  --muted-light: #a8b2a4;
+  /*
+   * Toteboard chrome (nav + data pages): deep racing / chalkboard green,
+   * white primary text, cream + soft-gold accents (not mustard blocks).
+   * Cue from 2D drby greens (#1A2C26 / #2A4B38 / #3A6A4A) but darker for reading.
+   * 3D race canvas lighting stays dusk in R3F — these tokens drive UI chrome.
+   */
+  --cream: #f0f7f2;
+  --cream-soft: #e2efe6;
+  --cream-deep: #c5ddcc;
+  --paper: #243f32;
+  --turf-soft: #15261f;
+  --turf-mid: #11201a;
+  --turf-deep: #0c1813;
+  --sage: #1a2c26;
+  --ink: #f0f7f2;
+  --ink-soft: #d9efdf;
+  --navy: #1a2c26;
+  --navy-mid: #2a4b38;
+  --navy-deep: #0f1a16;
+  --gold: #d4c48a;
+  --gold-bright: #e8d9a8;
+  --gold-dim: #b8a872;
+  --muted: #9bc4a8;
+  --muted-light: #b3dfb8;
   --accent: #d45a6a;
   --accent-soft: #e07885;
-  --success: #6aad6a;
+  --success: #7dcb8a;
   --danger: #d4685a;
   --track-dirt: #d2b48c;
   --radius: 12px;
   --radius-sm: 8px;
   --font-display: 'Fraunces', 'Cormorant Garamond', Georgia, serif;
   --font-body: 'Source Sans 3', 'IBM Plex Sans', system-ui, sans-serif;
-  --shadow-soft: 0 8px 28px rgba(0, 0, 0, 0.35);
-  --shadow-card: 0 4px 18px rgba(0, 0, 0, 0.28);
-  --border-gold: 1px solid rgba(201, 162, 39, 0.4);
-  --border-ink: 1px solid rgba(232, 236, 228, 0.1);
+  --shadow-soft: 0 8px 28px rgba(0, 0, 0, 0.4);
+  --shadow-card: 0 4px 18px rgba(0, 0, 0, 0.32);
+  --border-gold: 1px solid rgba(212, 196, 138, 0.35);
+  --border-ink: 1px solid rgba(240, 247, 242, 0.12);
   /* Legacy aliases used by Race HUD / 3D overlays */
   --bg-deep: var(--navy-deep);
-  --bg-panel: #16242c;
-  --bg-elevated: #1e303a;
+  --bg-panel: #1e352a;
+  --bg-elevated: #2a4b38;
   --bg-card: var(--paper);
   --brass: var(--gold);
   --brass-bright: var(--gold-bright);
   --brass-dim: var(--gold-dim);
   --warm: var(--cream);
   --wood: var(--navy-mid);
-  --wood-light: #243560;
+  --wood-light: #3a6a4a;
   --shadow-panel: var(--shadow-soft);
   --border-brass: var(--border-gold);
 }
@@ -67,10 +72,10 @@ body {
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
   background-image:
-    radial-gradient(ellipse 90% 55% at 50% -15%, rgba(201, 162, 39, 0.08), transparent 55%),
-    radial-gradient(ellipse 55% 45% at 100% 100%, rgba(40, 90, 70, 0.12), transparent 50%),
-    radial-gradient(ellipse 40% 35% at 0% 80%, rgba(30, 60, 80, 0.14), transparent 45%),
-    linear-gradient(180deg, #152028 0%, #121c22 40%, #0e171c 100%);
+    radial-gradient(ellipse 90% 55% at 50% -15%, rgba(212, 196, 138, 0.06), transparent 55%),
+    radial-gradient(ellipse 55% 45% at 100% 100%, rgba(58, 106, 74, 0.18), transparent 50%),
+    radial-gradient(ellipse 40% 35% at 0% 80%, rgba(42, 75, 56, 0.2), transparent 45%),
+    linear-gradient(180deg, #1a2c26 0%, #15261f 42%, #11201a 100%);
 }
 
 /* Hide Netlify \"Powered by\" / HUD badge injected at the edge */
@@ -129,7 +134,7 @@ h3 {
 }
 
 .panel {
-  background: rgba(26, 40, 48, 0.92);
+  background: rgba(30, 53, 42, 0.94);
   border: var(--border-ink);
   border-radius: var(--radius);
   box-shadow: var(--shadow-card);
@@ -165,8 +170,8 @@ h3 {
   gap: 0.35rem;
   padding: 0.22rem 0.6rem;
   border-radius: 999px;
-  background: rgba(201, 162, 39, 0.14);
-  border: 1px solid rgba(201, 162, 39, 0.35);
+  background: rgba(212, 196, 138, 0.12);
+  border: 1px solid rgba(212, 196, 138, 0.32);
   color: var(--gold-bright);
   font-size: 0.72rem;
   font-weight: 600;
@@ -222,7 +227,7 @@ h3 {
 }
 
 .table tr:hover td {
-  background: rgba(201, 162, 39, 0.07);
+  background: rgba(240, 247, 242, 0.06);
 }
 
 .table strong {
@@ -237,7 +242,7 @@ h3 {
 }
 
 .card {
-  background: rgba(26, 40, 48, 0.92);
+  background: rgba(30, 53, 42, 0.94);
   border: var(--border-ink);
   border-radius: var(--radius);
   padding: 1.15rem 1.2rem 1.25rem;
@@ -265,7 +270,7 @@ h3 {
 .btn {
   appearance: none;
   border: var(--border-gold);
-  background: rgba(30, 48, 58, 0.9);
+  background: rgba(26, 44, 35, 0.92);
   color: var(--ink);
   border-radius: var(--radius-sm);
   padding: 0.55rem 1rem;
@@ -275,7 +280,7 @@ h3 {
 
 .btn:hover {
   border-color: var(--gold);
-  background: rgba(40, 60, 72, 0.95);
+  background: rgba(42, 75, 56, 0.95);
 }
 
 .btn:active {
@@ -352,7 +357,7 @@ h3 {
 }
 
 .table-row-clickable:focus-visible td {
-  outline: 2px solid rgba(201, 162, 39, 0.55);
+  outline: 2px solid rgba(212, 196, 138, 0.5);
   outline-offset: -2px;
 }
 
@@ -360,7 +365,7 @@ h3 {
   position: fixed;
   inset: 0;
   z-index: 40;
-  background: rgba(6, 12, 16, 0.62);
+  background: rgba(8, 16, 12, 0.68);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: flex-end;

@@ -11,7 +11,7 @@ import {
   type StandingRow,
   type Track,
 } from '../data/fakeSeason'
-import { hasApiKeyConfigured } from '../services/apiClient'
+import { ensureAblyConnected, hasAblyKeyConfigured, hasApiKeyConfigured } from '../services/apiClient'
 import { racesService } from '../services/racesService'
 import { tracksService } from '../services/tracksService'
 import type {
@@ -179,9 +179,11 @@ export type LiveSeasonState = {
   horseById: (id: string) => Horse | undefined
   trackById: (id: string) => Track | undefined
   refresh: () => Promise<void>
+  /** Locally mark a race completed so the next raceId is available for early Ably subscribe */
+  markRaceCompleted: (raceId: string, resultIds?: string[]) => void
 }
 
-function demoState(): Omit<LiveSeasonState, 'refresh' | 'loading' | 'error' | 'horseById' | 'trackById'> {
+function demoState(): Omit<LiveSeasonState, 'refresh' | 'loading' | 'error' | 'horseById' | 'trackById' | 'markRaceCompleted'> {
   return {
     mode: 'demo',
     horses: HORSES,
@@ -274,7 +276,23 @@ export function useLiveSeason(): LiveSeasonState {
       ])
       const scheduleList = Array.isArray(fetchedSchedule) ? fetchedSchedule : null
       if (scheduleList) {
-        setSchedule(scheduleList)
+        // Preserve locally completed races until the API catches up (early next-race subscribe)
+        setSchedule((prev) => {
+          const localDone = new Map(
+            prev.filter((r) => r.completed).map((r) => [r.id, r] as const),
+          )
+          return scheduleList.map((r) => {
+            const local = localDone.get(r.id)
+            if (local && !r.completed) {
+              return {
+                ...r,
+                completed: true,
+                results: r.results?.length ? r.results : local.results,
+              }
+            }
+            return r
+          })
+        })
       }
       if (fetchedStandings && typeof fetchedStandings === 'object') {
         setPoints(fetchedStandings)
@@ -288,13 +306,49 @@ export function useLiveSeason(): LiveSeasonState {
     }
   }, [])
 
+  // Eager Ably connect in live mode so race:{id} can attach during countdown
   useEffect(() => {
     if (mode !== 'live') return
-    const id = window.setInterval(() => {
-      void softRefresh()
-    }, 20_000)
-    return () => window.clearInterval(id)
-  }, [mode, softRefresh])
+    if (hasAblyKeyConfigured()) ensureAblyConnected()
+  }, [mode])
+
+  // Adaptive soft-refresh: ~5s near post / while a race is due, else 15s
+  useEffect(() => {
+    if (mode !== 'live') return
+    let timer: number | null = null
+    const scheduleNext = () => {
+      const now = Date.now()
+      const next = schedule.find((r) => !r.completed)
+      const dueSoon =
+        !!next &&
+        (next.startTime - now < 90_000 || // within 90s of post
+          next.startTime <= now) // already due / in progress on card
+      const delay = dueSoon ? 5_000 : 15_000
+      timer = window.setTimeout(() => {
+        void softRefresh().finally(scheduleNext)
+      }, delay)
+    }
+    scheduleNext()
+    return () => {
+      if (timer != null) window.clearTimeout(timer)
+    }
+  }, [mode, softRefresh, schedule])
+
+  const markRaceCompleted = useCallback((raceId: string, resultIds: string[] = []) => {
+    setSchedule((prev) => {
+      const idx = prev.findIndex((r) => r.id === raceId)
+      if (idx < 0) return prev
+      const cur = prev[idx]
+      if (cur.completed) return prev
+      const next = prev.slice()
+      next[idx] = {
+        ...cur,
+        completed: true,
+        results: resultIds.length ? resultIds : cur.results,
+      }
+      return next
+    })
+  }, [])
 
   const derived = useMemo(() => {
     if (mode === 'demo') {
@@ -378,5 +432,6 @@ export function useLiveSeason(): LiveSeasonState {
     horseById: (id: string) => horseMap.get(id),
     trackById: (id: string) => trackMap.get(id),
     refresh: load,
+    markRaceCompleted,
   }
 }

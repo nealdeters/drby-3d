@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react'
-import { getAblyClient, getRaceChannel, hasAblyKeyConfigured } from '../services/apiClient'
+import {
+  ensureAblyConnected,
+  getAblyClient,
+  getRaceChannel,
+  hasAblyKeyConfigured,
+} from '../services/apiClient'
 import type { LiveRacer, RaceUpdate } from '../types/live'
 
 export type LiveFeedState = {
@@ -25,6 +30,10 @@ type Options = {
   /** Subscribe only in live data mode with a real race id */
   enabled: boolean
   seedRacers?: LiveRacer[]
+  /** Scheduled start ms — used to decide mid-race snapshot vs clean early attach */
+  raceStartTime?: number | null
+  /** Fired when Ably delivers finished so season can advance immediately */
+  onRaceFinished?: (raceId: string, resultIds: string[]) => void
 }
 
 function assignMissingLanes(list: LiveRacer[]): LiveRacer[] {
@@ -89,8 +98,16 @@ function noteFinishers(
  * Subscribe to Ably `race:{raceId}` / `race-update` for live pack progress.
  * progressMap is overall race 0–1 (`total_distance / (length*laps)`).
  * Never call setRacers on progress ticks — only mutate progressRef / laneRef.
+ *
+ * Subscribe as soon as raceId is known (upcoming / countdown) — do not wait for started.
  */
-export function useLiveRace({ raceId, enabled, seedRacers = [] }: Options): LiveFeedState {
+export function useLiveRace({
+  raceId,
+  enabled,
+  seedRacers = [],
+  raceStartTime = null,
+  onRaceFinished,
+}: Options): LiveFeedState {
   const progressRef = useRef<Record<string, number>>({})
   const laneRef = useRef<Record<string, number>>({})
   const finishOrderRef = useRef<string[]>([])
@@ -102,6 +119,13 @@ export function useLiveRace({ raceId, enabled, seedRacers = [] }: Options): Live
   const subscribedId = useRef<string | null>(null)
   const seedKeyRef = useRef<string>('')
   const raceIdRef = useRef<string | null>(null)
+  const lastElapsedRef = useRef(-1)
+  const liveSyncedRef = useRef(false)
+  const coalescingRef = useRef(false)
+  const coalesceBufRef = useRef<RaceUpdate[]>([])
+  const coalesceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const onFinishedRef = useRef(onRaceFinished)
+  onFinishedRef.current = onRaceFinished
 
   const applyLaneProgressFromList = useCallback((list: LiveRacer[], writeProgress: boolean) => {
     for (const r of list) {
@@ -147,6 +171,8 @@ export function useLiveRace({ raceId, enabled, seedRacers = [] }: Options): Live
     if (raceId !== raceIdRef.current) {
       raceIdRef.current = raceId ?? null
       finishOrderRef.current = []
+      lastElapsedRef.current = -1
+      liveSyncedRef.current = false
       for (const id of Object.keys(progressRef.current)) {
         progressRef.current[id] = 0
       }
@@ -160,9 +186,12 @@ export function useLiveRace({ raceId, enabled, seedRacers = [] }: Options): Live
       setStatus('idle')
       setElapsed(0)
       subscribedId.current = null
+      liveSyncedRef.current = false
       return
     }
 
+    // Warm connection immediately (before Race canvas mounts)
+    ensureAblyConnected()
     const client = getAblyClient()
     if (!client) {
       setFeedConnected(false)
@@ -171,12 +200,22 @@ export function useLiveRace({ raceId, enabled, seedRacers = [] }: Options): Live
 
     let cancelled = false
     let channel: ReturnType<typeof getRaceChannel> | null = null
+    let attachedListener: ((stateChange: { hasBacklog?: boolean; resumed?: boolean }) => void) | null = null
+    const expectedRaceId = raceId
 
-    const onMessage = (message: { data?: RaceUpdate }) => {
-      const update = message.data
-      if (!update || update.raceId !== raceId) return
+    const applyUpdate = (update: RaceUpdate) => {
+      if (!update || update.raceId !== expectedRaceId) return
 
-      if (update.elapsed !== undefined) setElapsed(update.elapsed)
+      if (typeof update.elapsed === 'number' && Number.isFinite(update.elapsed)) {
+        // Drop stale rewind/resume packets once we are live-synced forward
+        if (liveSyncedRef.current && update.elapsed + 80 < lastElapsedRef.current) {
+          return
+        }
+        if (update.elapsed >= lastElapsedRef.current) {
+          lastElapsedRef.current = update.elapsed
+        }
+        setElapsed(update.elapsed)
+      }
 
       // Lane updates only — do NOT setRacers on progress ticks
       if (update.racers) {
@@ -214,6 +253,7 @@ export function useLiveRace({ raceId, enabled, seedRacers = [] }: Options): Live
             }
           }
         }
+        liveSyncedRef.current = true
         setIsRacing(true)
         setStatus('racing')
         setFeedConnected(true)
@@ -227,6 +267,7 @@ export function useLiveRace({ raceId, enabled, seedRacers = [] }: Options): Live
           }
         }
         noteFinishers(finishOrderRef.current, update.progressMap, update.racers)
+        liveSyncedRef.current = true
         setIsRacing(true)
         setStatus('racing')
         setFeedConnected(true)
@@ -260,9 +301,14 @@ export function useLiveRace({ raceId, enabled, seedRacers = [] }: Options): Live
             }
           }
         }
+        liveSyncedRef.current = true
         setIsRacing(false)
         setStatus('finished')
         setFeedConnected(true)
+        const resultIds =
+          update.results?.map((r) => r.id) ??
+          (finishOrderRef.current.length ? [...finishOrderRef.current] : [])
+        onFinishedRef.current?.(expectedRaceId, resultIds)
       } else if (update.progressMap) {
         // Unknown type with progress — still apply so we never drop ticks
         for (const [id, p] of Object.entries(update.progressMap)) {
@@ -271,19 +317,79 @@ export function useLiveRace({ raceId, enabled, seedRacers = [] }: Options): Live
           }
         }
         noteFinishers(finishOrderRef.current, update.progressMap, update.racers)
+        liveSyncedRef.current = true
       }
+    }
+
+    const flushCoalesce = () => {
+      coalesceTimerRef.current = null
+      coalescingRef.current = false
+      const buf = coalesceBufRef.current
+      coalesceBufRef.current = []
+      if (!buf.length) {
+        liveSyncedRef.current = true
+        return
+      }
+      // Time-order then collapse: honor started, then latest progress/finished by elapsed
+      buf.sort((a, b) => (a.elapsed ?? a.timestamp ?? 0) - (b.elapsed ?? b.timestamp ?? 0))
+      const started = buf.find((u) => u.type === 'started')
+      const finished = [...buf].reverse().find((u) => u.type === 'finished')
+      const latestLive = [...buf].reverse().find((u) => u.type === 'progress' || !!u.progressMap)
+      if (started) applyUpdate(started)
+      if (finished) applyUpdate(finished)
+      else if (latestLive && latestLive !== started) applyUpdate(latestLive)
+      liveSyncedRef.current = true
+    }
+
+    const onMessage = (message: { data?: RaceUpdate }) => {
+      const update = message.data
+      if (!update || update.raceId !== expectedRaceId) return
+
+      // Attach backlog / resume flood — coalesce briefly, then apply latest (keep UX smooth)
+      if (coalescingRef.current) {
+        coalesceBufRef.current.push(update)
+        if (coalesceTimerRef.current) clearTimeout(coalesceTimerRef.current)
+        coalesceTimerRef.current = setTimeout(flushCoalesce, 40)
+        return
+      }
+
+      applyUpdate(update)
     }
 
     const setup = () => {
       if (cancelled) return
       try {
-        channel = getRaceChannel(raceId)
-        subscribedId.current = raceId
+        const startMs = typeof raceStartTime === 'number' ? raceStartTime : null
+        // Mid-race join only: one last message — never rewind multi-second progress floods
+        const midRace = startMs != null && Date.now() >= startMs + 1500
+        channel = getRaceChannel(expectedRaceId, { midRaceSnapshot: midRace })
+        subscribedId.current = expectedRaceId
+        liveSyncedRef.current = false
+        lastElapsedRef.current = -1
+        coalesceBufRef.current = []
+
+        attachedListener = (stateChange) => {
+          if (cancelled) return
+          if (stateChange?.hasBacklog || stateChange?.resumed) {
+            coalescingRef.current = true
+            if (coalesceTimerRef.current) clearTimeout(coalesceTimerRef.current)
+            // If no backlog messages arrive, clear coalescing shortly
+            coalesceTimerRef.current = setTimeout(flushCoalesce, 80)
+          } else {
+            // Clean attach (typical early subscribe before start) — apply ticks immediately
+            coalescingRef.current = false
+            liveSyncedRef.current = false
+          }
+        }
+        channel.on('attached', attachedListener)
+
         channel.subscribe('race-update', onMessage)
         setFeedConnected(true)
         setIsRacing(false)
         setStatus((s) => (s === 'finished' ? s : 'waiting'))
-        console.log(`[useLiveRace] subscribed race:${raceId}`)
+        console.log(
+          `[useLiveRace] subscribed race:${expectedRaceId}${midRace ? ' (mid-race snapshot)' : ' (early)'}`,
+        )
       } catch (err) {
         console.warn('[useLiveRace] subscribe failed', err)
         setFeedConnected(false)
@@ -291,9 +397,21 @@ export function useLiveRace({ raceId, enabled, seedRacers = [] }: Options): Live
     }
 
     const cleanup = () => {
+      if (coalesceTimerRef.current) {
+        clearTimeout(coalesceTimerRef.current)
+        coalesceTimerRef.current = null
+      }
+      coalesceBufRef.current = []
+      coalescingRef.current = false
       if (channel && subscribedId.current) {
         try {
           channel.unsubscribe('race-update')
+          if (attachedListener) channel.off('attached', attachedListener)
+        } catch {
+          /* ignore */
+        }
+        try {
+          void channel.detach()
         } catch {
           /* ignore */
         }
@@ -305,10 +423,11 @@ export function useLiveRace({ raceId, enabled, seedRacers = [] }: Options): Live
       setup()
     } else {
       const onConnect = () => {
-        setup()
+        if (!cancelled) setup()
         client.connection.off('connected', onConnect)
       }
       client.connection.on('connected', onConnect)
+      // Also try immediately — Ably queues attach until connected
       setup()
     }
 
@@ -318,7 +437,7 @@ export function useLiveRace({ raceId, enabled, seedRacers = [] }: Options): Live
       setFeedConnected(false)
       setIsRacing(false)
     }
-  }, [enabled, raceId, commitRoster, applyLaneProgressFromList])
+  }, [enabled, raceId, raceStartTime, commitRoster, applyLaneProgressFromList])
 
   return {
     feedConnected,

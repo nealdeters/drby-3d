@@ -72,10 +72,25 @@ export function getAblyClient(): Ably.Realtime | null {
   return ablyClient
 }
 
-export function getRaceChannel(raceId: string) {
+/** Warm the Realtime connection as soon as live mode is known (before Race view mounts). */
+export function ensureAblyConnected(): Ably.Realtime | null {
+  return getAblyClient()
+}
+
+export type RaceChannelOptions = {
+  /** When true, request a single last message on attach (mid-race join only — not a multi-second rewind flood). */
+  midRaceSnapshot?: boolean
+}
+
+export function getRaceChannel(raceId: string, options?: RaceChannelOptions) {
   const client = getAblyClient()
   if (!client) {
     throw new Error('Ably client not initialized — set VITE_ABLY_API_KEY')
   }
-  return client.channels.get(`race:${raceId}`)
+  const name = `race:${raceId}`
+  if (options?.midRaceSnapshot) {
+    return client.channels.get(name, { params: { rewind: '1' } })
+  }
+  // Fresh channel options (no rewind) — early subscribe before start should not pull history
+  return client.channels.get(name, { params: {} })
 }

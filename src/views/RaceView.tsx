@@ -2,26 +2,20 @@ import { useMemo } from 'react'
 import { RaceHUD } from '../components/race/RaceHUD'
 import { RaceScene } from '../components/race/RaceScene'
 import { useLiveData } from '../context/LiveDataContext'
-import { useLiveRace } from '../hooks/useLiveRace'
 import { mapLiveRacerToHorse } from '../hooks/useLiveSeason'
 import type { RaceEntry } from '../data/fakeSeason'
 import './RaceView.css'
 
 export function RaceView() {
   const season = useLiveData()
-  const raceId = season.currentRace?.id ?? null
+  // Feed is subscribed at provider level (early, before this view mounts)
+  const feed = season.raceFeed
   const seedRacers = useMemo(() => {
     if (!season.currentRace || !season.roster.length) return season.roster
     const ids = new Set(season.currentRace.racerIds)
     const field = season.roster.filter((r) => ids.has(r.id))
     return field.length ? field : season.roster
   }, [season.currentRace, season.roster])
-
-  const feed = useLiveRace({
-    raceId,
-    enabled: season.mode === 'live' && Boolean(raceId),
-    seedRacers,
-  })
 
   const horses = useMemo(() => {
     if (season.mode === 'live' && (feed.racers.length || seedRacers.length)) {
@@ -83,16 +77,13 @@ export function RaceView() {
 
     const candidates: unknown[] = [
       season.currentRace?.track?.surface,
-      // Live catalog by id (authoritative when schedule embed is incomplete)
       trackId
         ? season.liveTracks.find((t) => t.id === trackId)?.surface
         : undefined,
-      // Schedule embed for this race id
       season.currentRace?.id
         ? season.schedule.find((e) => e.id === season.currentRace?.id)?.track?.surface
         : undefined,
       trackId ? season.schedule.find((e) => e.track?.id === trackId)?.track?.surface : undefined,
-      // Mapped season tracks (live-mapped, not fake-only when live ids present)
       trackId ? season.trackById(trackId)?.surface : undefined,
       currentEntry ? season.trackById(currentEntry.trackId)?.surface : undefined,
     ]
@@ -102,7 +93,6 @@ export function RaceView() {
       if (n) return n
     }
 
-    // Last resort by track name when surface embed is missing
     const nameHint = (
       season.currentRace?.track?.name ??
       (trackId ? season.liveTracks.find((t) => t.id === trackId)?.name : undefined) ??
@@ -131,8 +121,6 @@ export function RaceView() {
     currentEntry,
   ])
 
-  // Live-driven in live mode (subscribed or waiting) — isRacing chooses gate-hold vs progressMap
-  // Never fall back to demo stepField between races while in live mode
   const liveFeed = season.mode === 'live'
 
   return (

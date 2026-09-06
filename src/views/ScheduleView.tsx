@@ -106,7 +106,7 @@ export function ScheduleView() {
         <div>
           <span className="view-kicker">Official program</span>
           <h1>Race Schedule</h1>
-          <p>Card of the day — purses, tracks, and post times for the DRBY season.</p>
+          <p>Card of the day — tracks and post times for the DRBY season.</p>
         </div>
         <span className="badge" data-mode={mode}>
           {mode === 'live' ? 'Live API' : 'Demo data'}
@@ -139,14 +139,13 @@ export function ScheduleView() {
                 <th>When</th>
                 <th>Race</th>
                 <th>Track</th>
-                <th>Purse</th>
                 <th>Status</th>
               </tr>
             </thead>
             <tbody>
               {visibleRaces.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="muted">
+                  <td colSpan={4} className="muted">
                     {hideFinished
                       ? 'No upcoming or live races — turn off “Hide finished” to see results.'
                       : 'No races on the card.'}
@@ -174,7 +173,6 @@ export function ScheduleView() {
                         <strong>{r.name}</strong>
                       </td>
                       <td>{track?.name ?? r.trackId}</td>
-                      <td>{r.purse > 0 ? formatPurse(r.purse) : '—'}</td>
                       <td>
                         <span className="badge" data-status={r.status}>
                           {r.status}
