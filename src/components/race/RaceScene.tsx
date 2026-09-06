@@ -11,8 +11,8 @@ import { createFieldState, stepField, type HorseSimState } from './trackMath'
  * High grandstand / slight top-¾ overhead.
  * Oval outer extents ~±24 X and ~±15 Z; stands/spires push the frame to
  * roughly X±32 and Z −24…+30. Landscape/desktop keeps the original
- * framing; portrait/narrow aspect pulls back, raises, and widens FOV so
- * both turns (±outerRx) plus horse rail margin stay inside the viewport.
+ * framing; portrait/narrow aspect gently pulls back, raises, and widens FOV
+ * so both turns (±outerRx) plus horse rail margin stay in frame with padding.
  */
 function GrandstandCamera() {
   const cam = useRef<THREE.PerspectiveCamera>(null)
@@ -23,10 +23,11 @@ function GrandstandCamera() {
     // 0 at square/landscape, 1 at typical phone portrait (~0.45)
     const narrow = THREE.MathUtils.clamp((1 - aspect) / 0.55, 0, 1)
 
-    const baseY = 52 + narrow * 20
-    const baseZ = 48 + narrow * 28
-    const fov = 50 + narrow * 16
-    const lookZ = -0.5 + narrow * 0.4
+    // Portrait boost ~25% less aggressive than prior overshoot
+    const baseY = 52 + narrow * 15
+    const baseZ = 48 + narrow * 21
+    const fov = 50 + narrow * 12
+    const lookZ = -0.5 + narrow * 0.3
 
     if (Math.abs(cam.current.fov - fov) > 0.01) {
       cam.current.fov = fov

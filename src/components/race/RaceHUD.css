@@ -168,9 +168,10 @@
   color: var(--cream);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.26);
   max-width: 100%;
-  /* Sit above the stands — lift ~90px from original bottom */
+  /* Pin under grandstand at bottom of race canvas (safe-area padding only) */
   margin-top: auto;
-  transform: translateY(-90px);
+  transform: translateY(0);
+  padding-bottom: max(0.45rem, env(safe-area-inset-bottom, 0px));
   width: 100%;
 }
 
@@ -297,9 +298,10 @@
   .race-hud__side {
     display: flex;
     margin-left: 0;
-    /* Bottom-right above grandstand — lift ~90px from original bottom */
+    /* Bottom-right under grandstand — no negative lift */
     align-self: flex-end;
     margin-top: auto;
-    transform: translateY(-90px);
+    transform: translateY(0);
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
   }
 }
