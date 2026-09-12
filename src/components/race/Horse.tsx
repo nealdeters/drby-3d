@@ -60,6 +60,33 @@ export function HorseMesh({ horse, index, fieldRef }: Props) {
     const pos = trackPoint(s.progress, s.radial)
     const tan = trackTangent(s.progress, s.radial)
 
+    // At the gate (pace ~0) stand still — no walking in place before the break.
+    if (s.pace <= 0.08) {
+      applyLeg(hl.current, 0, true)
+      applyLeg(hr.current, 0, true)
+      applyLeg(fl.current, 0, false)
+      applyLeg(fr.current, 0, false)
+      root.current.position.set(pos.x, 0.02, pos.z)
+      root.current.rotation.y = Math.atan2(tan.x, tan.z)
+      root.current.rotation.z = 0
+      root.current.rotation.x = 0
+      if (body.current) {
+        body.current.position.y = 0
+        body.current.rotation.x = 0
+      }
+      if (neck.current) neck.current.rotation.x = 0.35
+      if (head.current) head.current.rotation.x = -0.15
+      if (tail.current) {
+        tail.current.rotation.x = 0.35
+        tail.current.rotation.y = 0
+      }
+      if (jockey.current) {
+        jockey.current.position.y = 0.92
+        jockey.current.rotation.x = 0.35
+      }
+      return
+    }
+
     // Gallop frequency scales with race pace (not just sliding along the rail)
     const strideHz = 2.4 + s.pace * 2.2
     gait.current += dt * strideHz * Math.PI * 2

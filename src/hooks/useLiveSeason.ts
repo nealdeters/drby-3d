@@ -95,11 +95,27 @@ function mapRaceEvent(
   }
 }
 
-function buildStandings(
-  points: Record<string, number>,
+/** Championship scoring: 5 / 3 / 1 for 1st / 2nd / 3rd. */
+export function pointsFromResults(races: Array<{ completed?: boolean; results?: string[] }>): Record<string, number> {
+  const pts: Record<string, number> = {}
+  for (const race of races) {
+    if (!race.completed || !race.results?.length) continue
+    const [first, second, third] = race.results
+    if (first) pts[first] = (pts[first] ?? 0) + 5
+    if (second) pts[second] = (pts[second] ?? 0) + 3
+    if (third) pts[third] = (pts[third] ?? 0) + 1
+  }
+  return pts
+}
+
+export function buildStandings(
+  apiPoints: Record<string, number>,
   roster: LiveRacer[],
-  schedule: LiveRaceEvent[],
+  schedule: Array<{ completed?: boolean; results?: string[] }>,
 ): StandingRow[] {
+  const fromCard = pointsFromResults(schedule)
+  // Prefer card results so a stale/empty standings blob cannot zero the table.
+  const points = Object.keys(fromCard).length ? fromCard : apiPoints
   const wins: Record<string, number> = {}
   const places: Record<string, number> = {}
   const starts: Record<string, number> = {}
@@ -119,10 +135,13 @@ function buildStandings(
       places[id] = (places[id] ?? 0) + 1
     }
   }
-  const ids = Object.keys(points).length
-    ? Object.keys(points)
-    : roster.map((r) => r.id)
-  return ids
+  const ids = new Set<string>([
+    ...Object.keys(points),
+    ...roster.map((r) => r.id),
+    ...Object.keys(wins),
+    ...Object.keys(starts),
+  ])
+  return [...ids]
     .map((id) => ({
       horseId: id,
       points: points[id] ?? 0,
@@ -131,7 +150,7 @@ function buildStandings(
       starts: starts[id] ?? 0,
       rank: 0,
     }))
-    .sort((a, b) => b.points - a.points || b.wins - a.wins)
+    .sort((a, b) => b.points - a.points || b.wins - a.wins || a.horseId.localeCompare(b.horseId))
     .map((row, i) => ({ ...row, rank: i + 1 }))
 }
 
@@ -173,6 +192,7 @@ export type LiveSeasonState = {
   schedule: LiveRaceEvent[]
   standings: StandingRow[]
   seasons: Season[]
+  completedSeasons: LiveCompletedSeason[]
   nextRace: LiveRaceEvent | null
   currentRace: LiveRaceEvent | null
   seasonNumber: number
@@ -194,6 +214,7 @@ function demoState(): Omit<LiveSeasonState, 'refresh' | 'loading' | 'error' | 'h
     schedule: [],
     standings: STANDINGS,
     seasons: SEASONS,
+    completedSeasons: [],
     nextRace: null,
     currentRace: null,
     seasonNumber: 2026,
@@ -360,6 +381,7 @@ export function useLiveSeason(): LiveSeasonState {
         tracks: TRACKS,
         standings: STANDINGS,
         seasons: SEASONS,
+        completedSeasons: [],
       }
     }
 
@@ -401,6 +423,7 @@ export function useLiveSeason(): LiveSeasonState {
       nextRace: next,
       currentRace: current,
       seasonNumber,
+      completedSeasons: completed,
     }
   }, [mode, roster, liveTracks, schedule, points, completed, seasonNumber])
 
@@ -426,6 +449,7 @@ export function useLiveSeason(): LiveSeasonState {
     schedule,
     standings: derived.standings,
     seasons: derived.seasons,
+    completedSeasons: derived.completedSeasons ?? [],
     nextRace: derived.nextRace ?? null,
     currentRace: derived.currentRace ?? null,
     seasonNumber: derived.seasonNumber,

@@ -120,30 +120,30 @@ function RacingField({
       horses.length,
       horses.map((h) => h.speedBias),
     )
-    // Live gate: finish/start wire at oval 0.5 with lane radials
+    // Live gate: every horse on the start wire, locked to its lane
     horses.forEach((h, i) => {
       const s = fieldRef.current[i]
       if (!s) return
       if (liveFeed) {
-        s.progress = GATE_OVAL - (i / Math.max(horses.length, 1)) * 0.012
+        s.progress = GATE_OVAL
+        s.pace = 0
       }
-      const lane = laneRef?.current[h.id]
-      if (lane) s.radial = laneToRadial(lane, horses.length)
+      const lane = laneRef?.current[h.id] ?? i + 1
+      s.radial = laneToRadial(lane, horses.length)
     })
   }, [horses, laneRef, liveFeed])
 
-  // On race start: park pack at gate, then ease into live progress (no burst snap)
+  // On race start: park pack on the wire in lanes (no stagger, no ease-in delay)
   useEffect(() => {
     if (liveFeed && isRacing && !wasRacing.current) {
       raceAgeRef.current = 0
       horses.forEach((h, i) => {
         const s = fieldRef.current[i]
         if (!s) return
-        s.progress = GATE_OVAL - (i / Math.max(horses.length, 1)) * 0.012
-        const lane = laneRef?.current[h.id]
-        if (typeof lane === 'number' && lane > 0) {
-          s.radial = laneToRadial(lane, horses.length)
-        }
+        s.progress = GATE_OVAL
+        s.pace = 0
+        const lane = laneRef?.current[h.id] ?? i + 1
+        s.radial = laneToRadial(lane, horses.length)
       })
     }
     if (!isRacing) {
@@ -159,30 +159,26 @@ function RacingField({
 
     if (liveFeed) {
       if (!isRacing || !progressRef) {
-        // Gate hold / idle between races — do not run demo stepField
+        // Gate hold: freeze on the start wire in assigned lanes. Do not gallop or weave.
         horses.forEach((h, i) => {
           const s = states[i]
           if (!s) return
-          const gate = GATE_OVAL - (i / Math.max(horses.length, 1)) * 0.012
-          s.progress = THREE.MathUtils.lerp(s.progress, gate, 1 - Math.exp(-clamped * 6))
-          s.pace = 0.85
+          s.progress = GATE_OVAL
+          s.pace = 0
           const lane = laneRef?.current[h.id] ?? i + 1
-          const desired = laneToRadial(lane, horses.length)
-          s.radial = THREE.MathUtils.lerp(s.radial, desired, 1 - Math.exp(-clamped * 5))
+          s.radial = laneToRadial(lane, horses.length)
         })
         return
       }
 
       raceAgeRef.current += clamped
-      const startPhase = raceAgeRef.current < 2.75
-      // Soft opening: never snap-forward; cap catch-up so gate → live eases in
-      const followRate = startPhase ? 4.5 + raceAgeRef.current * 2.2 : 12
-      // Mid-race reconnect only — raised well above the old 0.35 that fired at the break
-      const snapThreshold = startPhase ? 0.92 : 0.72
+      const followRate = 18
 
       horses.forEach((h, i) => {
         const s = states[i]
         if (!s) return
+        const lane = laneRef?.current[h.id] ?? i + 1
+        s.radial = laneToRadial(lane, horses.length)
         const overall = progressRef.current[h.id]
         if (typeof overall === 'number' && Number.isFinite(overall)) {
           const tgt = overallToOvalProgress(overall, laps)
@@ -190,22 +186,16 @@ function RacingField({
           let delta = tgt - cur
           if (delta < -0.5) delta += 1
           if (delta < 0) delta = 0 // no reverse
-          if (!startPhase && delta > snapThreshold) {
-            // Large mid-race jump (reconnect / lap wrap) — snap forward
+          if (delta > 0.65) {
             s.progress = Math.floor(s.progress) + tgt
           } else {
-            // Always interpolate from current (gate or trail) — never batch-skip ticks
-            const step = Math.min(delta, delta * Math.min(1, clamped * followRate))
-            // Extra start-phase speed cap (~oval fraction / sec) so a late first packet eases in
-            const maxStep = startPhase ? clamped * (0.12 + raceAgeRef.current * 0.1) : delta
-            s.progress = advanceForward(s.progress, Math.min(step, maxStep))
+            const step = delta * Math.min(1, clamped * followRate)
+            s.progress = advanceForward(s.progress, step)
           }
-          s.pace = Math.max(0.85, Math.min(1.35, 0.9 + delta * 8))
-        }
-        const lane = laneRef?.current[h.id]
-        if (typeof lane === 'number' && lane > 0) {
-          const desired = laneToRadial(lane, horses.length)
-          s.radial = THREE.MathUtils.lerp(s.radial, desired, 1 - Math.exp(-clamped * 5))
+          s.pace = overall > 0.001 ? Math.max(0.85, Math.min(1.35, 0.9 + delta * 8)) : 0
+        } else {
+          s.progress = GATE_OVAL
+          s.pace = 0
         }
       })
     } else {

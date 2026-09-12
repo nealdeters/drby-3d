@@ -30,8 +30,30 @@ export function RaceView() {
     season.races.find((r) => r.status === 'live') ??
     null
 
-  // Match live App: first schedule item with !completed && startTime > now
+  // Countdown the race that is next to break (current incomplete), not the one after it.
+  // That way the clock hits 00:00 at post instead of jumping to the following 10-minute race.
   const countdownTarget = useMemo((): RaceEntry | null => {
+    const mapEvent = (ev: NonNullable<typeof season.currentRace>): RaceEntry => {
+      const mapped = season.races.find((r) => r.id === ev.id)
+      if (mapped) return mapped
+      return {
+        id: ev.id,
+        name: ev.track?.name ? ev.track.name : `Race ${ev.id.slice(0, 8)}`,
+        trackId: ev.track?.id ?? 'unknown',
+        scheduledAt: new Date(ev.startTime).toISOString(),
+        purse: 0,
+        status: ev.startTime <= Date.now() ? 'live' : 'upcoming',
+        horseIds: ev.racerIds ?? [],
+      }
+    }
+
+    if (season.mode === 'live' && !feed.isRacing) {
+      const due = season.currentRace && !season.currentRace.completed
+        ? season.currentRace
+        : season.schedule.find((r) => !r.completed) ?? null
+      if (due) return mapEvent(due)
+    }
+
     const now = Date.now()
     const future = season.schedule.find((r) => !r.completed && r.startTime > now)
     if (!future) {
@@ -39,18 +61,8 @@ export function RaceView() {
         season.races.find((r) => r.status === 'upcoming' && r.id !== currentEntry?.id) ?? null
       )
     }
-    const mapped = season.races.find((r) => r.id === future.id)
-    if (mapped) return mapped
-    return {
-      id: future.id,
-      name: future.track?.name ? future.track.name : `Race ${future.id.slice(0, 8)}`,
-      trackId: future.track?.id ?? 'unknown',
-      scheduledAt: new Date(future.startTime).toISOString(),
-      purse: 0,
-      status: 'upcoming',
-      horseIds: future.racerIds ?? [],
-    }
-  }, [season.schedule, season.races, currentEntry])
+    return mapEvent(future)
+  }, [season.schedule, season.races, season.currentRace, season.mode, currentEntry, feed.isRacing])
 
   const trackName =
     season.currentRace?.track?.name ??
