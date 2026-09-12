@@ -120,6 +120,7 @@ export function useLiveRace({
   const seedKeyRef = useRef<string>('')
   const raceIdRef = useRef<string | null>(null)
   const lastElapsedRef = useRef(-1)
+  const elapsedShownRef = useRef(0)
   const liveSyncedRef = useRef(false)
   const coalescingRef = useRef(false)
   const coalesceBufRef = useRef<RaceUpdate[]>([])
@@ -172,6 +173,7 @@ export function useLiveRace({
       raceIdRef.current = raceId ?? null
       finishOrderRef.current = []
       lastElapsedRef.current = -1
+      elapsedShownRef.current = 0
       liveSyncedRef.current = false
       for (const id of Object.keys(progressRef.current)) {
         progressRef.current[id] = 0
@@ -214,7 +216,17 @@ export function useLiveRace({
         if (update.elapsed >= lastElapsedRef.current) {
           lastElapsedRef.current = update.elapsed
         }
-        setElapsed(update.elapsed)
+        // Do not re-render the tree at Ably tick rate (~20 Hz) — that hitch-freezes the canvas.
+        const shown = elapsedShownRef.current
+        if (
+          update.type === 'started' ||
+          update.type === 'finished' ||
+          update.elapsed - shown >= 250 ||
+          shown - update.elapsed >= 250
+        ) {
+          elapsedShownRef.current = update.elapsed
+          setElapsed(update.elapsed)
+        }
       }
 
       // Lane updates only — do NOT setRacers on progress ticks
@@ -229,7 +241,11 @@ export function useLiveRace({
       if (update.type === 'started') {
         // A late/replayed "started" after we are already rolling must not zero the pack
         // (that is the vanish-at-gate / reappear glitch).
-        if (liveSyncedRef.current && lastElapsedRef.current > 400) {
+        const alreadyRolling =
+          lastElapsedRef.current > 400 ||
+          Object.values(progressRef.current).some((v) => typeof v === 'number' && v > 0.02)
+        if (alreadyRolling) {
+          liveSyncedRef.current = true
           setIsRacing(true)
           setStatus('racing')
           setFeedConnected(true)
@@ -371,9 +387,12 @@ export function useLiveRace({
         // Mid-race join only: one last message — never rewind multi-second progress floods
         const midRace = startMs != null && Date.now() >= startMs + 1500
         channel = getRaceChannel(expectedRaceId, { midRaceSnapshot: midRace })
+        const keepMotion = lastElapsedRef.current > 400 && raceIdRef.current === expectedRaceId
         subscribedId.current = expectedRaceId
-        liveSyncedRef.current = false
-        lastElapsedRef.current = -1
+        if (!keepMotion) {
+          liveSyncedRef.current = false
+          lastElapsedRef.current = -1
+        }
         coalesceBufRef.current = []
 
         attachedListener = (stateChange) => {
@@ -384,9 +403,12 @@ export function useLiveRace({
             // If no backlog messages arrive, clear coalescing shortly
             coalesceTimerRef.current = setTimeout(flushCoalesce, 80)
           } else {
-            // Clean attach (typical early subscribe before start) — apply ticks immediately
+            // Clean attach (typical early subscribe before start) — apply ticks immediately.
+            // Do not drop liveSynced mid-race: that lets a replayed "started" zero the pack.
             coalescingRef.current = false
-            liveSyncedRef.current = false
+            if (!(lastElapsedRef.current > 400)) {
+              liveSyncedRef.current = false
+            }
           }
         }
         channel.on('attached', attachedListener)

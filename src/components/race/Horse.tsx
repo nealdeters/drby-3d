@@ -54,7 +54,7 @@ export function HorseMesh({ horse, index, fieldRef }: Props) {
 
   useFrame((_, dt) => {
     if (!root.current) return
-    const s = fieldRef.current[index]
+    const s = fieldRef.current.find((st) => st.id === horse.id) ?? fieldRef.current[index]
     if (!s) return
 
     const pos = trackPoint(s.progress, s.radial)

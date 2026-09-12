@@ -296,8 +296,9 @@ export function useLiveSeason(): LiveSeasonState {
         racesService.getRoster().catch(() => null),
       ])
       const scheduleList = Array.isArray(fetchedSchedule) ? fetchedSchedule : null
-      if (scheduleList) {
-        // Preserve locally completed races until the API catches up (early next-race subscribe)
+      if (scheduleList && scheduleList.length > 0) {
+        // Preserve locally completed races until the API catches up (early next-race subscribe).
+        // Ignore empty payloads so a blip does not drop currentRace and freeze the field.
         setSchedule((prev) => {
           const localDone = new Map(
             prev.filter((r) => r.completed).map((r) => [r.id, r] as const),

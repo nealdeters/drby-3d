@@ -146,6 +146,7 @@ export function RaceView() {
           surface={trackSurface}
           progressRef={feed.progressRef}
           laneRef={feed.laneRef}
+          raceId={season.currentRace?.id ?? null}
         />
       </div>
       <RaceHUD

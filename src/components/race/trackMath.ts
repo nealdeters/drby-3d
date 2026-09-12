@@ -94,7 +94,14 @@ export type HorseSimState = {
   pace: number
   /** Last accepted overall 0–1 from the live feed (detects rewinds) */
   lastOverall?: number
+  /** performance.now() when lastOverall was accepted */
+  lastSampleAt?: number
+  /** Overall (0–1) per second, from successive live samples */
+  overallRate?: number
 }
+
+/** Finish / start wire on our oval (near stretch). */
+export const GATE_OVAL = 0.5
 
 /** Seed starting pack: staggered at the gate on the near stretch. */
 export function createFieldState(count: number, speedBiases: number[]): HorseSimState[] {
@@ -116,6 +123,81 @@ export function createFieldState(count: number, speedBiases: number[]): HorseSim
 export function advanceProgress(progress: number, delta: number): number {
   const d = Math.max(0, delta)
   return progress + d
+}
+
+/** Scheduler progressMap is overall 0–1; map to our oval (finish wire at 0.5). */
+export function overallToOvalProgress(overall: number, laps: number): number {
+  const L = laps > 0 ? laps : 1
+  const o = Number.isFinite(overall) ? Math.max(0, overall) : 0
+  const lapFrac = ((((o * L) % 1) + 1) % 1)
+  return (lapFrac + GATE_OVAL) % 1
+}
+
+export function onStartWire(progress: number, eps = 0.02): boolean {
+  const p = fracProgress(progress)
+  const d = Math.abs(p - GATE_OVAL)
+  return d <= eps || d >= 1 - eps
+}
+
+/** Forward distance around the oval in [0, 1). */
+export function ovalForwardDelta(cur: number, tgt: number): number {
+  let delta = fracProgress(tgt) - fracProgress(cur)
+  if (delta < 0) delta += 1
+  return delta
+}
+
+/**
+ * Walk a horse toward a target oval progress.
+ * Mid-race joins still on the wire snap once; wrap noise off the wire does not take the long way.
+ */
+export function followOvalToward(
+  s: HorseSimState,
+  tgt: number,
+  dt: number,
+  followRate: number,
+  overall: number,
+): number {
+  const cur = fracProgress(s.progress)
+  let delta = ovalForwardDelta(cur, tgt)
+  if (delta > 0.92) {
+    if (onStartWire(cur) && overall > 0.05) {
+      // Late join / first paint in the last ~8% of a lap — snap off the wire once.
+      s.progress = Math.floor(s.progress) + fracProgress(tgt)
+      return 0
+    }
+    if (!onStartWire(cur)) {
+      delta = 0
+    }
+  }
+  const step = delta * Math.min(1, Math.max(0, dt) * followRate)
+  s.progress = advanceProgress(s.progress, step)
+  return delta
+}
+
+export function overallRateFromSamples(prev: number, next: number, dtSec: number): number | undefined {
+  if (!(dtSec > 0.015) || next + 1e-6 < prev) return undefined
+  const rate = (next - prev) / dtSec
+  if (!Number.isFinite(rate) || rate < 0) return undefined
+  return Math.min(rate, 0.8)
+}
+
+/** Keep the pack moving through Ably gaps instead of pinning to the last sample. */
+export function coastOverall(
+  last: number,
+  rate: number | undefined,
+  ageSec: number,
+  racing: boolean,
+): number {
+  if (!racing || !(last >= 0) || last >= 0.999) return last
+  if (!(typeof rate === 'number') || rate <= 0) return last
+  const coast = Math.min(Math.max(0, ageSec), 1.25) * rate
+  return Math.min(0.998, last + coast)
+}
+
+export function clearLiveMotion(s: HorseSimState): void {
+  s.lastOverall = undefined
+  s.lastSampleAt = undefined
+  s.overallRate = undefined
 }
 
 /**

@@ -1,11 +1,22 @@
-import { useEffect, useMemo, useRef, type MutableRefObject } from 'react'
+import { memo, useEffect, useMemo, useRef, type MutableRefObject } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { Environment, PerspectiveCamera, Sky } from '@react-three/drei'
 import * as THREE from 'three'
 import type { Horse } from '../../data/fakeSeason'
 import { HorseMesh } from './Horse'
 import { Track, type TrackSurface } from './Track'
-import { createFieldState, fracProgress, stepField, type HorseSimState } from './trackMath'
+import {
+  GATE_OVAL,
+  clearLiveMotion,
+  coastOverall,
+  createFieldState,
+  followOvalToward,
+  fracProgress,
+  overallRateFromSamples,
+  overallToOvalProgress,
+  stepField,
+  type HorseSimState,
+} from './trackMath'
 
 /**
  * High grandstand / slight top-¾ overhead.
@@ -58,14 +69,7 @@ function laneToRadial(lane: number, count: number): number {
   return THREE.MathUtils.clamp(((L - 1) / Math.max(max - 1, 1)) * 1.7 - 0.85, -0.92, 0.92)
 }
 
-/** Scheduler progressMap is overall 0–1; map to our oval (finish wire at 0.5). */
-export function overallToOvalProgress(overall: number, laps: number): number {
-  const L = laps > 0 ? laps : 1
-  const lapFrac = ((((overall * L) % 1) + 1) % 1)
-  return (lapFrac + 0.5) % 1
-}
-
-const GATE_OVAL = 0.5
+export { overallToOvalProgress, GATE_OVAL }
 
 type FieldProps = {
   horses: Horse[]
@@ -77,6 +81,8 @@ type FieldProps = {
   trackLaps: number
   progressRef?: MutableRefObject<Record<string, number>>
   laneRef?: MutableRefObject<Record<string, number>>
+  /** Current live race id — reset motion when it changes */
+  raceId?: string | null
 }
 
 function readOverall(map: Record<string, number> | undefined, id: string): number | undefined {
@@ -88,17 +94,6 @@ function readOverall(map: Record<string, number> | undefined, id: string): numbe
   return undefined
 }
 
-function followOval(s: HorseSimState, tgt: number, dt: number, followRate: number) {
-  const cur = fracProgress(s.progress)
-  let delta = tgt - cur
-  if (delta < 0) delta += 1 // always walk forward around the oval
-  // Tiny rewind / wrap noise — don't take the long way around
-  if (delta > 0.92) delta = 0
-  const step = delta * Math.min(1, dt * followRate)
-  s.progress = advanceForward(s.progress, step)
-  return delta
-}
-
 function RacingField({
   horses,
   liveFeed,
@@ -106,6 +101,7 @@ function RacingField({
   trackLaps,
   progressRef,
   laneRef,
+  raceId,
 }: FieldProps) {
   const fieldRef = useRef<HorseSimState[]>(
     createFieldState(
@@ -120,6 +116,24 @@ function RacingField({
   const lapsRef = useRef(trackLaps)
   // Freeze lap mapping once the pack is off the gate so a roster refresh cannot wrap them.
   const lockedLapsRef = useRef<number | null>(null)
+  const raceIdRef = useRef<string | null>(raceId ?? null)
+
+  // New race identity: park on the wire and drop leftover lastOverall from the previous race.
+  useEffect(() => {
+    const nextId = raceId ?? null
+    if (nextId === raceIdRef.current) return
+    raceIdRef.current = nextId
+    raceAgeRef.current = 0
+    lockedLapsRef.current = null
+    wasRacing.current = false
+    for (const s of fieldRef.current) {
+      clearLiveMotion(s)
+      if (liveFeed) {
+        s.progress = GATE_OVAL
+        s.pace = 0
+      }
+    }
+  }, [raceId, liveFeed])
 
   // Rebuild local sim only when the horse identity set changes (not every tick)
   useEffect(() => {
@@ -156,6 +170,8 @@ function RacingField({
         s.progress = prev.progress
         s.pace = prev.pace
         s.lastOverall = prev.lastOverall
+        s.lastSampleAt = prev.lastSampleAt
+        s.overallRate = prev.overallRate
       } else if (liveFeed) {
         s.progress = GATE_OVAL
         s.pace = 0
@@ -217,6 +233,7 @@ function RacingField({
           if (!s) return
           s.progress = GATE_OVAL
           s.pace = 0
+          clearLiveMotion(s)
           const lane = laneRef?.current[h.id] ?? i + 1
           s.radial = laneToRadial(lane, horses.length)
         })
@@ -224,27 +241,39 @@ function RacingField({
       }
 
       raceAgeRef.current += clamped
+      const now = performance.now()
 
       horses.forEach((h, i) => {
         const s = states[i]
         if (!s) return
         const lane = laneRef?.current[h.id] ?? i + 1
         s.radial = laneToRadial(lane, horses.length)
-        const overall = readOverall(progressRef.current, h.id)
-        if (typeof overall !== 'number') {
-          // Dropped tick: stay put. Never warp home.
+        const sample = readOverall(progressRef.current, h.id)
+        if (typeof sample === 'number') {
+          const prevOverall = s.lastOverall
+          const rewind =
+            typeof prevOverall === 'number' && sample + 0.002 < prevOverall && prevOverall < 0.998
+          if (!rewind) {
+            if (typeof prevOverall === 'number' && typeof s.lastSampleAt === 'number') {
+              const rate = overallRateFromSamples(prevOverall, sample, (now - s.lastSampleAt) / 1000)
+              if (rate != null) s.overallRate = rate
+            }
+            s.lastOverall = sample
+            s.lastSampleAt = now
+          }
+        }
+        if (typeof s.lastOverall !== 'number') {
           if (!isRacing) s.pace = 0
           return
         }
-        const prevOverall = s.lastOverall
-        if (typeof prevOverall === 'number' && overall + 0.002 < prevOverall && prevOverall < 0.998) {
-          // Stale rewind packet — ignore
-          if (!isRacing) s.pace = 0
-          return
-        }
-        s.lastOverall = overall
+        const overall = coastOverall(
+          s.lastOverall,
+          s.overallRate,
+          typeof s.lastSampleAt === 'number' ? (now - s.lastSampleAt) / 1000 : 0,
+          isRacing && s.lastOverall > 0.001 && s.lastOverall < 0.999,
+        )
         const tgt = overallToOvalProgress(overall, laps)
-        const delta = followOval(s, tgt, clamped, followRate)
+        const delta = followOvalToward(s, tgt, clamped, followRate, overall)
         if (!isRacing || overall <= 0.001) {
           s.pace = 0
         } else {
@@ -267,10 +296,6 @@ function RacingField({
   )
 }
 
-function advanceForward(progress: number, delta: number): number {
-  return progress + Math.max(0, delta)
-}
-
 export type RaceSceneProps = {
   horses: Horse[]
   liveFeed?: boolean
@@ -280,9 +305,10 @@ export type RaceSceneProps = {
   surface?: TrackSurface
   progressRef?: MutableRefObject<Record<string, number>>
   laneRef?: MutableRefObject<Record<string, number>>
+  raceId?: string | null
 }
 
-export function RaceScene({
+export const RaceScene = memo(function RaceScene({
   horses,
   liveFeed = false,
   isRacing = false,
@@ -290,6 +316,7 @@ export function RaceScene({
   surface = 'dirt',
   progressRef,
   laneRef,
+  raceId = null,
 }: RaceSceneProps) {
   return (
     <Canvas shadows dpr={[1, 1.75]} gl={{ antialias: true, alpha: false }}>
@@ -332,8 +359,9 @@ export function RaceScene({
         trackLaps={trackLaps}
         progressRef={progressRef}
         laneRef={laneRef}
+        raceId={raceId}
       />
       <Environment preset="sunset" environmentIntensity={0.35} />
     </Canvas>
   )
-}
+})
