@@ -430,7 +430,7 @@ function FurlongMarkers() {
 
 export type TrackSurface = 'dirt' | 'turf' | 'asphalt' | 'grass'
 
-function racingSurfaceColors(surface: TrackSurface): {
+export function racingSurfaceColors(surface: TrackSurface): {
   base: string
   wear: string
   wearOpacity: number

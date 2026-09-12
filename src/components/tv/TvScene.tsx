@@ -2,6 +2,7 @@ import { memo, type MutableRefObject } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { Environment, Sky } from '@react-three/drei'
 import type { Horse } from '../../data/fakeSeason'
+import type { TrackSurface } from '../race/Track'
 import { BroadcastCamera } from './BroadcastCamera'
 import { TvField } from './TvField'
 import { TvTrack } from './TvTrack'
@@ -11,6 +12,7 @@ export type TvSceneProps = {
   liveFeed?: boolean
   isRacing?: boolean
   trackLaps?: number
+  surface?: TrackSurface
   progressRef?: MutableRefObject<Record<string, number>>
   laneRef?: MutableRefObject<Record<string, number>>
   raceId?: string | null
@@ -21,6 +23,7 @@ export const TvScene = memo(function TvScene({
   liveFeed = false,
   isRacing = false,
   trackLaps = 1,
+  surface = 'dirt',
   progressRef,
   laneRef,
   raceId = null,
@@ -57,7 +60,7 @@ export const TvScene = memo(function TvScene({
         shadow-bias={-0.00025}
       />
       <directionalLight position={[-18, 14, -8]} intensity={0.28} color="#9ab6d8" />
-      <TvTrack />
+      <TvTrack key={surface} surface={surface} />
       <TvField
         horses={horses}
         liveFeed={liveFeed}

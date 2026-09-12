@@ -197,3 +197,22 @@
 .tv-thirds__live.is-demo {
   background: #3a4a38;
 }
+
+.tv-view .race-hud {
+  z-index: 7;
+}
+
+/* Keep the booth bug off the Race HUD clock (top-left). */
+.tv-thirds__bug {
+  left: auto;
+  right: 16px;
+  top: 42px;
+  align-items: flex-end;
+}
+
+.tv-thirds__bar,
+.tv-thirds__order,
+.tv-thirds__meta,
+.tv-thirds__pace {
+  display: none;
+}

@@ -1,11 +1,8 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
 import { TRACK, ovalPoint } from '../race/trackMath'
+import { racingSurfaceColors, type TrackSurface } from '../race/Track'
 
-/** Churchill dirt from stretch stills (center sample ~#A08866). */
-const DIRT = '#d1b288'
-const DIRT_CUP = '#b59d81'
-const DIRT_WET = '#a08866'
 const RAIL = '#f4f1ea'
 const POST = '#e8e4da'
 const TURF = '#4a7a38'
@@ -46,29 +43,6 @@ function ringGeometry(
   return geo
 }
 
-function dirtTexture(): THREE.CanvasTexture {
-  const c = document.createElement('canvas')
-  c.width = 512
-  c.height = 512
-  const ctx = c.getContext('2d')!
-  ctx.fillStyle = DIRT
-  ctx.fillRect(0, 0, 512, 512)
-  for (let i = 0; i < 2400; i++) {
-    const x = Math.random() * 512
-    const y = Math.random() * 512
-    const s = 1 + Math.random() * 3
-    ctx.fillStyle = Math.random() > 0.5 ? DIRT_CUP : DIRT_WET
-    ctx.globalAlpha = 0.18 + Math.random() * 0.25
-    ctx.fillRect(x, y, s, s * 0.6)
-  }
-  ctx.globalAlpha = 1
-  const tex = new THREE.CanvasTexture(c)
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping
-  tex.repeat.set(8, 5)
-  tex.anisotropy = 8
-  return tex
-}
-
 function TwinSpire({ x }: { x: number }) {
   // Octagonal cream towers with dark roofs — clubhouse / stretch side (+Z).
   return (
@@ -93,7 +67,8 @@ function TwinSpire({ x }: { x: number }) {
   )
 }
 
-export function TvTrack() {
+export function TvTrack({ surface = 'dirt' }: { surface?: TrackSurface }) {
+  const raceColors = useMemo(() => racingSurfaceColors(surface), [surface])
   const dirtGeo = useMemo(
     () => ringGeometry(TRACK.innerRx, TRACK.innerRz, TRACK.outerRx, TRACK.outerRz, 128),
     [],
@@ -131,7 +106,6 @@ export function TvTrack() {
       ),
     [],
   )
-  const tex = useMemo(() => dirtTexture(), [])
   const posts = useMemo(() => {
     const pts: THREE.Vector3[] = []
     for (let i = 0; i < 64; i++) pts.push(ovalPoint(i / 64, TRACK.outerRx + 0.1, TRACK.outerRz + 0.08))
@@ -150,10 +124,23 @@ export function TvTrack() {
         <meshStandardMaterial color={TURF} roughness={1} />
       </mesh>
       <mesh geometry={dirtGeo} position={[0, 0.03, 0]} receiveShadow>
-        <meshStandardMaterial map={tex} color={DIRT} roughness={0.96} side={THREE.DoubleSide} />
+        <meshStandardMaterial
+          color={raceColors.base}
+          roughness={raceColors.roughness}
+          metalness={raceColors.metalness}
+          emissive={raceColors.emissive}
+          emissiveIntensity={raceColors.emissiveIntensity}
+          side={THREE.DoubleSide}
+        />
       </mesh>
       <mesh geometry={wearGeo} position={[0, 0.038, 0]} receiveShadow>
-        <meshStandardMaterial color={DIRT_CUP} roughness={1} transparent opacity={0.45} side={THREE.DoubleSide} />
+        <meshStandardMaterial
+          color={raceColors.wear}
+          roughness={1}
+          transparent
+          opacity={raceColors.wearOpacity}
+          side={THREE.DoubleSide}
+        />
       </mesh>
       <mesh geometry={outerRailGeo} position={[0, 0.1, 0]}>
         <meshStandardMaterial color={RAIL} roughness={0.32} metalness={0.12} side={THREE.DoubleSide} />

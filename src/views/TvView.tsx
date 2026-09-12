@@ -1,7 +1,9 @@
 import { useMemo } from 'react'
+import { RaceHUD } from '../components/race/RaceHUD'
 import { TvLowerThirds } from '../components/tv/TvLowerThirds'
 import { TvScene } from '../components/tv/TvScene'
 import { useLiveData } from '../context/LiveDataContext'
+import type { RaceEntry } from '../data/fakeSeason'
 import { mapLiveRacerToHorse } from '../hooks/useLiveSeason'
 import './TvView.css'
 
@@ -28,11 +30,97 @@ export function TvView() {
     season.races.find((r) => r.status === 'live') ??
     null
 
+  // Same next-post clock as Race: current incomplete card, not the one after it.
+  const countdownTarget = useMemo((): RaceEntry | null => {
+    const mapEvent = (ev: NonNullable<typeof season.currentRace>): RaceEntry => {
+      const mapped = season.races.find((r) => r.id === ev.id)
+      if (mapped) return mapped
+      return {
+        id: ev.id,
+        name: ev.track?.name ? ev.track.name : `Race ${ev.id.slice(0, 8)}`,
+        trackId: ev.track?.id ?? 'unknown',
+        scheduledAt: new Date(ev.startTime).toISOString(),
+        purse: 0,
+        status: ev.startTime <= Date.now() ? 'live' : 'upcoming',
+        horseIds: ev.racerIds ?? [],
+      }
+    }
+
+    if (season.mode === 'live' && !feed.isRacing) {
+      const due =
+        season.currentRace && !season.currentRace.completed
+          ? season.currentRace
+          : (season.schedule.find((r) => !r.completed) ?? null)
+      if (due) return mapEvent(due)
+    }
+
+    const now = Date.now()
+    const future = season.schedule.find((r) => !r.completed && r.startTime > now)
+    if (!future) {
+      return (
+        season.races.find((r) => r.status === 'upcoming' && r.id !== currentEntry?.id) ?? null
+      )
+    }
+    return mapEvent(future)
+  }, [season.schedule, season.races, season.currentRace, season.mode, currentEntry, feed.isRacing])
+
   const trackName =
     season.currentRace?.track?.name ??
     (currentEntry ? season.trackById(currentEntry.trackId)?.name : undefined)
 
   const trackLaps = season.currentRace?.track?.laps ?? 1
+
+  const trackSurface = useMemo(() => {
+    const normalize = (raw: unknown): 'asphalt' | 'turf' | 'dirt' | null => {
+      if (raw == null) return null
+      const s = String(raw).trim().toLowerCase()
+      if (!s) return null
+      if (s === 'asphalt' || s === 'tarmac' || s === 'pavement' || s === 'road') return 'asphalt'
+      if (s === 'grass' || s === 'turf') return 'turf'
+      if (s === 'dirt' || s === 'sand' || s === 'mud') return 'dirt'
+      return null
+    }
+
+    const trackId = season.currentRace?.track?.id ?? currentEntry?.trackId ?? null
+
+    const candidates: unknown[] = [
+      season.currentRace?.track?.surface,
+      trackId ? season.liveTracks.find((t) => t.id === trackId)?.surface : undefined,
+      season.currentRace?.id
+        ? season.schedule.find((e) => e.id === season.currentRace?.id)?.track?.surface
+        : undefined,
+      trackId ? season.schedule.find((e) => e.track?.id === trackId)?.track?.surface : undefined,
+      trackId ? season.trackById(trackId)?.surface : undefined,
+      currentEntry ? season.trackById(currentEntry.trackId)?.surface : undefined,
+    ]
+
+    for (const c of candidates) {
+      const n = normalize(c)
+      if (n) return n
+    }
+
+    const nameHint = (
+      season.currentRace?.track?.name ??
+      (trackId ? season.liveTracks.find((t) => t.id === trackId)?.name : undefined) ??
+      (trackId ? season.trackById(trackId)?.name : undefined) ??
+      (currentEntry ? season.trackById(currentEntry.trackId)?.name : undefined) ??
+      ''
+    )
+      .toLowerCase()
+      .trim()
+    if (nameHint.includes('oval circuit')) {
+      return 'asphalt' as const
+    }
+    if (nameHint.includes('dirt derby')) {
+      return 'dirt' as const
+    }
+    if (nameHint.includes('grassland')) {
+      return 'turf' as const
+    }
+
+    return 'dirt' as const
+  }, [season.currentRace, season.liveTracks, season.schedule, season.trackById, currentEntry])
+
   const liveFeed = season.mode === 'live'
 
   return (
@@ -43,18 +131,30 @@ export function TvView() {
           liveFeed={liveFeed}
           isRacing={feed.isRacing}
           trackLaps={trackLaps}
+          surface={trackSurface}
           progressRef={feed.progressRef}
           laneRef={feed.laneRef}
           raceId={season.currentRace?.id ?? null}
         />
       </div>
       <TvLowerThirds
-        horses={horses}
         isRacing={feed.isRacing}
         live={liveFeed}
-        elapsedMs={feed.elapsed}
         trackName={trackName}
+      />
+      <RaceHUD
+        mode={season.mode}
+        feedConnected={feed.feedConnected}
+        isRacing={feed.isRacing}
+        elapsedMs={feed.elapsed}
+        horses={horses}
+        races={season.races}
+        currentRace={currentEntry}
+        nextRace={countdownTarget}
+        trackName={trackName}
+        trackSurface={trackSurface}
         progressRef={feed.progressRef}
+        finishOrderRef={feed.finishOrderRef}
       />
     </div>
   )
