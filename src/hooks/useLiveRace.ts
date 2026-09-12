@@ -227,6 +227,14 @@ export function useLiveRace({
       }
 
       if (update.type === 'started') {
+        // A late/replayed "started" after we are already rolling must not zero the pack
+        // (that is the vanish-at-gate / reappear glitch).
+        if (liveSyncedRef.current && lastElapsedRef.current > 400) {
+          setIsRacing(true)
+          setStatus('racing')
+          setFeedConnected(true)
+          return
+        }
         // Gate first: zero progress before any live follow so we never catch up from a queued burst
         finishOrderRef.current = []
         const ids =
@@ -385,8 +393,9 @@ export function useLiveRace({
 
         channel.subscribe('race-update', onMessage)
         setFeedConnected(true)
-        setIsRacing(false)
-        setStatus((s) => (s === 'finished' ? s : 'waiting'))
+        // Do not force isRacing=false on (re)attach — that parks every horse on the
+        // start wire for a frame and looks like they vanished.
+        setStatus((s) => (s === 'finished' || s === 'racing' ? s : 'waiting'))
         console.log(
           `[useLiveRace] subscribed race:${expectedRaceId}${midRace ? ' (mid-race snapshot)' : ' (early)'}`,
         )
@@ -435,9 +444,9 @@ export function useLiveRace({
       cancelled = true
       cleanup()
       setFeedConnected(false)
-      setIsRacing(false)
+      // Leave isRacing as-is across resubscribe so RacingField does not gate-warp.
     }
-  }, [enabled, raceId, raceStartTime, commitRoster, applyLaneProgressFromList])
+  }, [enabled, raceId, commitRoster, applyLaneProgressFromList])
 
   return {
     feedConnected,

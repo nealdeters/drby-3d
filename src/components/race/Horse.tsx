@@ -66,7 +66,7 @@ export function HorseMesh({ horse, index, fieldRef }: Props) {
       applyLeg(hr.current, 0, true)
       applyLeg(fl.current, 0, false)
       applyLeg(fr.current, 0, false)
-      root.current.position.set(pos.x, 0.02, pos.z)
+      root.current.position.set(pos.x, 0.12, pos.z)
       root.current.rotation.y = Math.atan2(tan.x, tan.z)
       root.current.rotation.z = 0
       root.current.rotation.x = 0
@@ -108,7 +108,7 @@ export function HorseMesh({ horse, index, fieldRef }: Props) {
     const bob = Math.sin(g * 2) * 0.055
     const gather = Math.max(0, -Math.sin(g * 2)) * 0.03
 
-    root.current.position.set(pos.x, 0.02 + bob, pos.z)
+    root.current.position.set(pos.x, 0.12 + bob, pos.z)
     root.current.rotation.y = Math.atan2(tan.x, tan.z)
     // Slight roll into the stride
     root.current.rotation.z = Math.sin(g) * 0.03
@@ -135,7 +135,7 @@ export function HorseMesh({ horse, index, fieldRef }: Props) {
   })
 
   return (
-    <group ref={root}>
+    <group ref={root} frustumCulled={false}>
       <group ref={body}>
         {/* Barrel / torso */}
         <mesh castShadow position={[0, 0.72, 0.02]} scale={[1, 1, 1.05]}>
@@ -320,7 +320,7 @@ export function HorseMesh({ horse, index, fieldRef }: Props) {
       </group>
 
       {/* Number plate — larger high-contrast jersey + white/black numeral */}
-      <Billboard position={[0, 2.05, 0]} follow>
+      <Billboard position={[0, 2.05, 0]} follow frustumCulled={false}>
         <mesh position={[0, 0, -0.03]}>
           <planeGeometry args={[0.78, 0.62]} />
           <meshBasicMaterial color="#0a1220" />

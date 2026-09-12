@@ -14,12 +14,18 @@ export const TRACK = {
 } as const
 
 /** Parametric oval in XZ plane. progress 0–1 around the track. */
+/** Fractional lap in [0, 1). */
+export function fracProgress(progress: number): number {
+  if (!Number.isFinite(progress)) return 0
+  return ((progress % 1) + 1) % 1
+}
+
 export function ovalPoint(
   progress: number,
   radiusX: number = TRACK.centerRx,
   radiusZ: number = TRACK.centerRz,
 ): THREE.Vector3 {
-  const t = progress * Math.PI * 2
+  const t = fracProgress(progress) * Math.PI * 2
   // t=0: far backstretch (-Z); t=0.5: near stretch toward grandstand (+Z)
   // Negative X sin → counter-clockwise when viewed from above (US / Churchill standard).
   // progress↑: far → left (−X) → near → right (+X) → far
@@ -34,9 +40,12 @@ export function ovalTangent(
   radiusZ: number = TRACK.centerRz,
 ): THREE.Vector3 {
   const eps = 0.001
-  const a = ovalPoint(progress, radiusX, radiusZ)
-  const b = ovalPoint((progress + eps) % 1, radiusX, radiusZ)
-  return b.sub(a).normalize()
+  const p = fracProgress(progress)
+  const a = ovalPoint(p, radiusX, radiusZ)
+  const b = ovalPoint(fracProgress(p + eps), radiusX, radiusZ)
+  const t = b.sub(a)
+  if (t.lengthSq() < 1e-10) return new THREE.Vector3(1, 0, 0)
+  return t.normalize()
 }
 
 /**
@@ -77,11 +86,14 @@ export function racePhase(lapProgress: number): RacePhase {
 }
 
 export type HorseSimState = {
+  id?: string
   progress: number
   radial: number
   radialVel: number
   /** Instantaneous lap speed multiplier */
   pace: number
+  /** Last accepted overall 0–1 from the live feed (detects rewinds) */
+  lastOverall?: number
 }
 
 /** Seed starting pack: staggered at the gate on the near stretch. */

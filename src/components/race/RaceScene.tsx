@@ -5,7 +5,7 @@ import * as THREE from 'three'
 import type { Horse } from '../../data/fakeSeason'
 import { HorseMesh } from './Horse'
 import { Track, type TrackSurface } from './Track'
-import { createFieldState, stepField, type HorseSimState } from './trackMath'
+import { createFieldState, fracProgress, stepField, type HorseSimState } from './trackMath'
 
 /**
  * High grandstand / slight top-¾ overhead.
@@ -44,7 +44,7 @@ function GrandstandCamera() {
       ref={cam}
       makeDefault
       fov={50}
-      near={0.1}
+      near={1}
       far={500}
       position={[0, 52, 48]}
     />
@@ -79,6 +79,26 @@ type FieldProps = {
   laneRef?: MutableRefObject<Record<string, number>>
 }
 
+function readOverall(map: Record<string, number> | undefined, id: string): number | undefined {
+  if (!map) return undefined
+  const direct = map[id]
+  if (typeof direct === 'number' && Number.isFinite(direct)) return direct
+  const asString = map[String(id)]
+  if (typeof asString === 'number' && Number.isFinite(asString)) return asString
+  return undefined
+}
+
+function followOval(s: HorseSimState, tgt: number, dt: number, followRate: number) {
+  const cur = fracProgress(s.progress)
+  let delta = tgt - cur
+  if (delta < 0) delta += 1 // always walk forward around the oval
+  // Tiny rewind / wrap noise — don't take the long way around
+  if (delta > 0.92) delta = 0
+  const step = delta * Math.min(1, dt * followRate)
+  s.progress = advanceForward(s.progress, step)
+  return delta
+}
+
 function RacingField({
   horses,
   liveFeed,
@@ -98,68 +118,100 @@ function RacingField({
   /** Seconds since isRacing flipped true — soft catch-up at the break */
   const raceAgeRef = useRef(0)
   const lapsRef = useRef(trackLaps)
-  lapsRef.current = trackLaps
+  // Freeze lap mapping once the pack is off the gate so a roster refresh cannot wrap them.
+  const lockedLapsRef = useRef<number | null>(null)
 
   // Rebuild local sim only when the horse identity set changes (not every tick)
   useEffect(() => {
     const key = horses.map((h) => h.id).join('|')
+    const prevById = new Map<string, HorseSimState>()
+    for (const s of fieldRef.current) {
+      if (s.id) prevById.set(s.id, s)
+    }
     if (key === idKeyRef.current && fieldRef.current.length === horses.length) {
       // Still refresh radials from lanes without resetting progress
-      if (laneRef?.current) {
-        horses.forEach((h, i) => {
-          const lane = laneRef.current[h.id]
-          if (lane && fieldRef.current[i]) {
-            fieldRef.current[i].radial = laneToRadial(lane, horses.length)
-          }
-        })
-      }
+      horses.forEach((h, i) => {
+        const s = fieldRef.current[i]
+        if (!s) return
+        s.id = h.id
+        const lane = laneRef?.current[h.id] ?? i + 1
+        s.radial = laneToRadial(lane, horses.length)
+      })
       return
     }
     idKeyRef.current = key
-    fieldRef.current = createFieldState(
+    const next = createFieldState(
       horses.length,
       horses.map((h) => h.speedBias),
     )
-    // Live gate: every horse on the start wire, locked to its lane
     horses.forEach((h, i) => {
-      const s = fieldRef.current[i]
+      const s = next[i]
       if (!s) return
-      if (liveFeed) {
+      const lane = laneRef?.current[h.id] ?? i + 1
+      s.id = h.id
+      s.radial = laneToRadial(lane, horses.length)
+      const prev = prevById.get(h.id)
+      if (prev && Number.isFinite(prev.progress)) {
+        // Keep the horse on the oval across roster reshuffles — never gate-warp mid-race.
+        s.progress = prev.progress
+        s.pace = prev.pace
+        s.lastOverall = prev.lastOverall
+      } else if (liveFeed) {
         s.progress = GATE_OVAL
         s.pace = 0
       }
-      const lane = laneRef?.current[h.id] ?? i + 1
-      s.radial = laneToRadial(lane, horses.length)
     })
+    fieldRef.current = next
   }, [horses, laneRef, liveFeed])
 
   // On race start: park pack on the wire in lanes (no stagger, no ease-in delay)
   useEffect(() => {
     if (liveFeed && isRacing && !wasRacing.current) {
       raceAgeRef.current = 0
+      lockedLapsRef.current = trackLaps > 0 ? trackLaps : 1
+      lapsRef.current = lockedLapsRef.current
       horses.forEach((h, i) => {
         const s = fieldRef.current[i]
         if (!s) return
-        s.progress = GATE_OVAL
-        s.pace = 0
+        const shown = fracProgress(s.progress)
+        const offWire = Math.abs(shown - GATE_OVAL) > 0.02 && Math.abs(shown - GATE_OVAL) < 0.98
+        const alreadyOut = (s.lastOverall ?? 0) > 0.02 || offWire
+        // If Ably already has them off the gate (late join / flicker), do not yank home.
+        if (!alreadyOut) {
+          s.progress = GATE_OVAL
+          s.pace = 0
+        }
         const lane = laneRef?.current[h.id] ?? i + 1
         s.radial = laneToRadial(lane, horses.length)
       })
     }
     if (!isRacing) {
       raceAgeRef.current = 0
+      lockedLapsRef.current = null
     }
     wasRacing.current = isRacing
-  }, [liveFeed, isRacing, horses, laneRef])
+  }, [liveFeed, isRacing, horses, laneRef, trackLaps])
 
   useFrame((_, dt) => {
     const clamped = Math.min(dt, 0.05)
     const states = fieldRef.current
-    const laps = lapsRef.current > 0 ? lapsRef.current : 1
+    if (lockedLapsRef.current == null && trackLaps > 0) {
+      lapsRef.current = trackLaps
+    }
+    const laps = (lockedLapsRef.current ?? lapsRef.current) > 0 ? (lockedLapsRef.current ?? lapsRef.current) : 1
 
     if (liveFeed) {
-      if (!isRacing || !progressRef) {
-        // Gate hold: freeze on the start wire in assigned lanes. Do not gallop or weave.
+      const followRate = 14
+      const holdGate = !isRacing && horses.every((h) => {
+        const overall = readOverall(progressRef?.current, h.id)
+        const s = states.find((st) => st.id === h.id)
+        const shown = s ? fracProgress(s.progress) : GATE_OVAL
+        const offGate = Math.abs(shown - GATE_OVAL) > 0.02 && Math.abs(shown - GATE_OVAL) < 0.98
+        return !((typeof overall === 'number' && overall > 0.001) || offGate)
+      })
+
+      if (!progressRef || holdGate) {
+        // True pre-race: freeze on the start wire in assigned lanes.
         horses.forEach((h, i) => {
           const s = states[i]
           if (!s) return
@@ -172,30 +224,31 @@ function RacingField({
       }
 
       raceAgeRef.current += clamped
-      const followRate = 18
 
       horses.forEach((h, i) => {
         const s = states[i]
         if (!s) return
         const lane = laneRef?.current[h.id] ?? i + 1
         s.radial = laneToRadial(lane, horses.length)
-        const overall = progressRef.current[h.id]
-        if (typeof overall === 'number' && Number.isFinite(overall)) {
-          const tgt = overallToOvalProgress(overall, laps)
-          const cur = ((s.progress % 1) + 1) % 1
-          let delta = tgt - cur
-          if (delta < -0.5) delta += 1
-          if (delta < 0) delta = 0 // no reverse
-          if (delta > 0.65) {
-            s.progress = Math.floor(s.progress) + tgt
-          } else {
-            const step = delta * Math.min(1, clamped * followRate)
-            s.progress = advanceForward(s.progress, step)
-          }
-          s.pace = overall > 0.001 ? Math.max(0.85, Math.min(1.35, 0.9 + delta * 8)) : 0
-        } else {
-          s.progress = GATE_OVAL
+        const overall = readOverall(progressRef.current, h.id)
+        if (typeof overall !== 'number') {
+          // Dropped tick: stay put. Never warp home.
+          if (!isRacing) s.pace = 0
+          return
+        }
+        const prevOverall = s.lastOverall
+        if (typeof prevOverall === 'number' && overall + 0.002 < prevOverall && prevOverall < 0.998) {
+          // Stale rewind packet — ignore
+          if (!isRacing) s.pace = 0
+          return
+        }
+        s.lastOverall = overall
+        const tgt = overallToOvalProgress(overall, laps)
+        const delta = followOval(s, tgt, clamped, followRate)
+        if (!isRacing || overall <= 0.001) {
           s.pace = 0
+        } else {
+          s.pace = Math.max(0.85, Math.min(1.35, 0.9 + delta * 8))
         }
       })
     } else {
