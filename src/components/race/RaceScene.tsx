@@ -4,6 +4,7 @@ import { Environment, PerspectiveCamera, Sky } from '@react-three/drei'
 import * as THREE from 'three'
 import type { Horse } from '../../data/fakeSeason'
 import { HorseMesh } from './Horse'
+import { Kickup } from './Kickup'
 import { Track, type TrackSurface } from './Track'
 import {
   GATE_OVAL,
@@ -83,6 +84,7 @@ type FieldProps = {
   laneRef?: MutableRefObject<Record<string, number>>
   /** Current live race id — reset motion when it changes */
   raceId?: string | null
+  surface?: TrackSurface
 }
 
 function readOverall(map: Record<string, number> | undefined, id: string): number | undefined {
@@ -102,6 +104,7 @@ function RacingField({
   progressRef,
   laneRef,
   raceId,
+  surface = 'dirt',
 }: FieldProps) {
   const fieldRef = useRef<HorseSimState[]>(
     createFieldState(
@@ -226,7 +229,7 @@ function RacingField({
         return !((typeof overall === 'number' && overall > 0.001) || offGate)
       })
 
-      if (!progressRef || holdGate) {
+      if (holdGate) {
         // True pre-race: freeze on the start wire in assigned lanes.
         horses.forEach((h, i) => {
           const s = states[i]
@@ -237,6 +240,10 @@ function RacingField({
           const lane = laneRef?.current[h.id] ?? i + 1
           s.radial = laneToRadial(lane, horses.length)
         })
+        return
+      }
+      if (!progressRef) {
+        // Keep last pose — never gate-warp just because the map ref is missing a frame.
         return
       }
 
@@ -257,6 +264,7 @@ function RacingField({
             if (typeof prevOverall === 'number' && typeof s.lastSampleAt === 'number') {
               const rate = overallRateFromSamples(prevOverall, sample, (now - s.lastSampleAt) / 1000)
               if (rate != null) s.overallRate = rate
+              else if (sample - prevOverall > 0.03) s.overallRate = undefined
             }
             s.lastOverall = sample
             s.lastSampleAt = now
@@ -290,7 +298,10 @@ function RacingField({
   return (
     <>
       {list.map((horse, i) => (
-        <HorseMesh key={horse.id} horse={horse} index={i} fieldRef={fieldRef} />
+        <group key={horse.id}>
+          <HorseMesh horse={horse} index={i} fieldRef={fieldRef} />
+          <Kickup horseId={horse.id} index={i} fieldRef={fieldRef} surface={surface} />
+        </group>
       ))}
     </>
   )
@@ -360,6 +371,7 @@ export const RaceScene = memo(function RaceScene({
         progressRef={progressRef}
         laneRef={laneRef}
         raceId={raceId}
+        surface={surface}
       />
       <Environment preset="sunset" environmentIntensity={0.35} />
     </Canvas>

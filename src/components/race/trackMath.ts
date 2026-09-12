@@ -146,6 +146,13 @@ export function ovalForwardDelta(cur: number, tgt: number): number {
   return delta
 }
 
+/** Adjacent-sample slope only. Snapshot catch-up is not a rate. */
+export const MAX_OVERALL_RATE = 0.12
+/** Ignore coalesced jumps when computing coast rate (keep previous slope). */
+export const MAX_SAMPLE_JUMP = 0.03
+/** Max oval catch-up per frame so a late sample slides instead of teleporting. */
+export const MAX_OVAL_STEP = 0.012
+
 /**
  * Walk a horse toward a target oval progress.
  * Mid-race joins still on the wire snap once; wrap noise off the wire does not take the long way.
@@ -169,16 +176,20 @@ export function followOvalToward(
       delta = 0
     }
   }
-  const step = delta * Math.min(1, Math.max(0, dt) * followRate)
+  const want = delta * Math.min(1, Math.max(0, dt) * followRate)
+  const step = Math.min(want, MAX_OVAL_STEP)
   s.progress = advanceProgress(s.progress, step)
   return delta
 }
 
 export function overallRateFromSamples(prev: number, next: number, dtSec: number): number | undefined {
   if (!(dtSec > 0.015) || next + 1e-6 < prev) return undefined
-  const rate = (next - prev) / dtSec
+  const jump = next - prev
+  // Phone resume / coalesced snapshot — do not treat as live pace.
+  if (jump > MAX_SAMPLE_JUMP) return undefined
+  const rate = jump / dtSec
   if (!Number.isFinite(rate) || rate < 0) return undefined
-  return Math.min(rate, 0.8)
+  return Math.min(rate, MAX_OVERALL_RATE)
 }
 
 /** Keep the pack moving through Ably gaps instead of pinning to the last sample. */
