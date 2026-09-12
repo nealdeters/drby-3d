@@ -11,10 +11,12 @@ import {
   clearLiveMotion,
   coastOverall,
   createFieldState,
+  crossedFinish,
   followOvalToward,
   fracProgress,
   overallRateFromSamples,
   overallToOvalProgress,
+  parkAtFinish,
   stepField,
   type HorseSimState,
 } from './trackMath'
@@ -274,12 +276,20 @@ function RacingField({
           if (!isRacing) s.pace = 0
           return
         }
+        if (crossedFinish(s.lastOverall)) {
+          parkAtFinish(s, clamped, followRate)
+          return
+        }
         const overall = coastOverall(
           s.lastOverall,
           s.overallRate,
           typeof s.lastSampleAt === 'number' ? (now - s.lastSampleAt) / 1000 : 0,
           isRacing && s.lastOverall > 0.001 && s.lastOverall < 0.999,
         )
+        if (crossedFinish(overall)) {
+          parkAtFinish(s, clamped, followRate)
+          return
+        }
         const tgt = overallToOvalProgress(overall, laps)
         const delta = followOvalToward(s, tgt, clamped, followRate, overall)
         if (!isRacing || overall <= 0.001) {

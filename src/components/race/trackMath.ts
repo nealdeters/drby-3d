@@ -211,6 +211,23 @@ export function clearLiveMotion(s: HorseSimState): void {
   s.overallRate = undefined
 }
 
+/** Crossed the line: walk to the finish wire, then stand still (no gallop in place). */
+export function crossedFinish(overall: number | undefined): boolean {
+  return typeof overall === 'number' && overall >= 0.999
+}
+
+export function parkAtFinish(s: HorseSimState, dt: number, followRate: number): void {
+  followOvalToward(s, GATE_OVAL, dt, followRate, 1)
+  if (onStartWire(s.progress, 0.015)) {
+    s.progress = Math.floor(s.progress) + GATE_OVAL
+    s.pace = 0
+    s.overallRate = 0
+    return
+  }
+  // Jog the last few lengths to the wire, then the idle pose takes over.
+  s.pace = 0.45
+}
+
 /**
  * Step the whole field together so horses pack, draft, and avoid stacking.
  * `dt` in seconds; `lapBaseSpeed` is fraction of lap per second at pace=1.

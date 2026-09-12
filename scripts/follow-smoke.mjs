@@ -140,6 +140,35 @@ assert('stale 0.99 vs 0.98 is rewind', isRewind(0.98, 0.99))
   assert('catch-up did not teleport', fracProgress(s.progress) < 0.53, `pos=${s.progress}`)
 }
 
+
+function crossedFinish(overall) {
+  return typeof overall === 'number' && overall >= 0.999
+}
+function parkAtFinish(s, dt, followRate) {
+  followOvalToward(s, GATE_OVAL, dt, followRate, 1)
+  if (onStartWire(s.progress, 0.015)) {
+    s.progress = Math.floor(s.progress) + GATE_OVAL
+    s.pace = 0
+    return true
+  }
+  s.pace = 0.45
+  return false
+}
+
+assert('crossedFinish 1', crossedFinish(1))
+assert('crossedFinish 0.998 not yet', !crossedFinish(0.998))
+{
+  const s = { progress: 0.45, pace: 1.1 }
+  let parked = false
+  for (let i = 0; i < 80; i++) parked = parkAtFinish(s, 1 / 60, 14)
+  assert('finish jog reaches wire idle', parked && onStartWire(s.progress) && s.pace === 0, `pos=${fracProgress(s.progress)} pace=${s.pace}`)
+}
+{
+  const s = { progress: GATE_OVAL, pace: 1.2 }
+  parkAtFinish(s, 1 / 60, 14)
+  assert('already on wire stops immediately', s.pace === 0 && onStartWire(s.progress))
+}
+
 if (fail.length) {
   console.error('FAIL', fail)
   process.exit(1)
