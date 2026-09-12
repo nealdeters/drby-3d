@@ -145,6 +145,7 @@ assert('stale 0.99 vs 0.98 is rewind', isRewind(0.98, 0.99))
 function compressOverallToPack(overall, leaderOverall, laps) {
   if (!(leaderOverall > 0) || !(overall >= 0) || overall >= leaderOverall) return overall
   if (overall >= 0.999 || leaderOverall >= 0.999) return overall
+  if (leaderOverall < 0.15) return overall
   const L = laps > 0 ? laps : 1
   const lapGap = (leaderOverall - overall) * L
   const shownLap = Math.tanh(lapGap / 0.14) * 0.11
@@ -221,6 +222,18 @@ assert('crossedFinish 0.998 not yet', !crossedFinish(0.998))
 {
   assert('no compress at finish', compressOverallToPack(0.95, 1, 3) === 0.95)
 }
+{
+  const shown = compressOverallToPack(0.04, 0.10, 1)
+  const gap = 0.10 - shown
+  assert('break 0.06 lap lead is not squeezed below ~0.04', gap >= 0.055 && shown === 0.04, `gap=${gap} shown=${shown}`)
+}
+{
+  const lead = 0.50
+  const shown = compressOverallToPack(0.44, lead, 1)
+  const gap = lead - shown
+  assert('mid-race pack squeeze still applies', gap < 0.06, `gap=${gap}`)
+}
+
 
 if (fail.length) {
   console.error('FAIL', fail)

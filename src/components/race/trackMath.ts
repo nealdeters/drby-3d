@@ -231,6 +231,8 @@ export function pastOrOnFinishWire(progress: number): boolean {
 export function compressOverallToPack(overall: number, leaderOverall: number, laps: number): number {
   if (!(leaderOverall > 0) || !(overall >= 0) || overall >= leaderOverall) return overall
   if (overall >= 0.999 || leaderOverall >= 0.999) return overall
+  // Break window: keep real strategy lines (a 0.05-lap jump must still read).
+  if (leaderOverall < 0.15) return overall
   const L = laps > 0 ? laps : 1
   const lapGap = (leaderOverall - overall) * L
   const shownLap = Math.tanh(lapGap / 0.14) * 0.11
