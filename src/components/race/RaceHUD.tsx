@@ -21,6 +21,9 @@ type Props = {
   progressRef?: MutableRefObject<Record<string, number>>
   /** Locked finish order (ids in place order) — finished horses stay put */
   finishOrderRef?: MutableRefObject<string[]>
+  /** TV only: highlight + follow this horse. Race page omits these. */
+  selectedHorseId?: string | null
+  onSelectHorse?: (id: string) => void
 }
 
 type OrderRow = {
@@ -61,6 +64,8 @@ export function RaceHUD({
   trackSurface,
   progressRef,
   finishOrderRef,
+  selectedHorseId = null,
+  onSelectHorse,
 }: Props) {
   const live =
     currentRace ??
@@ -107,6 +112,16 @@ export function RaceHUD({
     }
     return horses
   }, [horses, live])
+
+  const selectable = typeof onSelectHorse === 'function'
+  const rowClass = (row: OrderRow, base: string) => {
+    const done = row.progress >= 1
+    return `${base}${done ? ' is-finished' : ''}${selectable ? ' is-selectable' : ''}${selectedHorseId === row.id ? ' is-tracked' : ''}`
+  }
+  const onRowActivate = (id: string) => {
+    if (!onSelectHorse) return
+    onSelectHorse(id)
+  }
 
   // Throttled running order from progressRef (~6 Hz) — no setState every frame.
   // Finished horses keep locked places; only still-racing horses reshuffle below.
@@ -245,8 +260,22 @@ export function RaceHUD({
             return (
               <div
                 key={row.id}
-                className={`race-hud__order-row${done ? ' is-finished' : ''}`}
+                className={rowClass(row, 'race-hud__order-row')}
                 data-finished={done ? 'true' : undefined}
+                role={selectable ? 'button' : undefined}
+                tabIndex={selectable ? 0 : undefined}
+                aria-pressed={selectable ? selectedHorseId === row.id : undefined}
+                onClick={selectable ? () => onRowActivate(row.id) : undefined}
+                onKeyDown={
+                  selectable
+                    ? (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          onRowActivate(row.id)
+                        }
+                      }
+                    : undefined
+                }
               >
                 <span className="race-hud__place">{row.place}</span>
                 <span
@@ -277,8 +306,22 @@ export function RaceHUD({
             return (
               <div
                 key={row.id}
-                className={`race-hud__row${done ? ' is-finished' : ''}`}
+                className={rowClass(row, 'race-hud__row')}
                 data-finished={done ? 'true' : undefined}
+                role={selectable ? 'button' : undefined}
+                tabIndex={selectable ? 0 : undefined}
+                aria-pressed={selectable ? selectedHorseId === row.id : undefined}
+                onClick={selectable ? () => onRowActivate(row.id) : undefined}
+                onKeyDown={
+                  selectable
+                    ? (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          onRowActivate(row.id)
+                        }
+                      }
+                    : undefined
+                }
               >
                 <span className="race-hud__place">{row.place}</span>
                 <span className="race-hud__num" style={{ background: row.jersey, color: fg }}>

@@ -10,6 +10,25 @@ const DOUBLE_TAP_MS = 320
 const DOUBLE_TAP_PX = 22
 const HOME_HOLD_S = 2.6
 
+function followPose() {
+  const px = tvBridge.followX
+  const py = tvBridge.followY
+  const pz = tvBridge.followZ
+  const hx = tvBridge.followHX
+  const hz = tvBridge.followHZ
+  const len = Math.hypot(hx, hz) || 1
+  const fx = hx / len
+  const fz = hz / len
+  const ilen = Math.hypot(px, pz) || 1
+  const ox = px / ilen
+  const oz = pz / ilen
+  return {
+    pos: new THREE.Vector3(px - fx * 7.2 + ox * 3.6, 3.8, pz - fz * 7.2 + oz * 3.6),
+    look: new THREE.Vector3(px + fx * 1.6, py + 0.15, pz + fz * 1.6),
+    fov: 30,
+  }
+}
+
 /** Infield, slightly ahead of the pack — the gate stretch on load / double-tap. */
 function homePose() {
   const px = tvBridge.packX
@@ -140,6 +159,7 @@ export function BroadcastCamera() {
         lastT = 0
         userLook.current = false
         tvBridge.userLook = false
+        tvBridge.followId = null
         homeUntil.current = Number.POSITIVE_INFINITY
         applyHome()
         return
@@ -149,6 +169,7 @@ export function BroadcastCamera() {
       lastY = e.clientY
       userLook.current = true
       tvBridge.userLook = true
+      tvBridge.followId = null
       homeUntil.current = 0
       if (cam.current && controls.current) {
         controls.current.enabled = true
@@ -168,6 +189,11 @@ export function BroadcastCamera() {
       aimed.current = true
     }
 
+    if (tvBridge.followId) {
+      userLook.current = false
+      tvBridge.userLook = false
+    }
+
     if (controls.current) {
       controls.current.enabled = userLook.current
       clampAboveDirt(cam.current, controls.current)
@@ -181,7 +207,12 @@ export function BroadcastCamera() {
     }
 
     const nowS = performance.now() / 1000
-    const pose = nowS < homeUntil.current || !tvBridge.racing ? homePose() : shotPose(tvBridge.shot)
+    const tracking = Boolean(tvBridge.followId && tvBridge.followOk)
+    const pose = tracking
+      ? followPose()
+      : nowS < homeUntil.current || !tvBridge.racing
+        ? homePose()
+        : shotPose(tvBridge.shot)
     const k = 1 - Math.pow(0.08, dt)
     pos.current.lerp(pose.pos, k)
     look.current.lerp(pose.look, k)

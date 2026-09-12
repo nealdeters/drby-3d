@@ -19,4 +19,12 @@ export const tvBridge = {
   leaderLap: 1,
   /** True while the user is orbiting; HUD shows look, broadcast lerp pauses. */
   userLook: false,
+  /** TV position-bar follow. Null = pack / home / orbit. */
+  followId: null as string | null,
+  followOk: false,
+  followX: 0,
+  followY: 0.7,
+  followZ: 11,
+  followHX: 1,
+  followHZ: 0,
 }

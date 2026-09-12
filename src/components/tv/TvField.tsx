@@ -304,6 +304,21 @@ export function TvField({
     tvBridge.racing = liveFeed ? isRacing : true
     tvBridge.trackLaps = laps
     tvBridge.leaderLap = lapForState(lead, laps)
+    const follow = tvBridge.followId
+      ? states.find((st) => st.id === tvBridge.followId)
+      : undefined
+    if (follow) {
+      const fp = trackPoint(follow.progress, follow.radial)
+      const ft = trackTangent(follow.progress, follow.radial)
+      tvBridge.followOk = true
+      tvBridge.followX = fp.x
+      tvBridge.followY = 0.7
+      tvBridge.followZ = fp.z
+      tvBridge.followHX = ft.x
+      tvBridge.followHZ = ft.z
+    } else {
+      tvBridge.followOk = false
+    }
     if (tvBridge.racing) tvBridge.elapsedMs += clamped * 1000
     const want = shotFromOval(tvBridge.leaderProgress, tvBridge.racing)
     const nowS = performance.now() / 1000

@@ -1,5 +1,6 @@
-import { useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { RaceHUD } from '../components/race/RaceHUD'
+import { tvBridge } from '../components/tv/tvBridge'
 import { TvLowerThirds } from '../components/tv/TvLowerThirds'
 import { TvScene } from '../components/tv/TvScene'
 import { useLiveData } from '../context/LiveDataContext'
@@ -10,6 +11,27 @@ import './TvView.css'
 export function TvView() {
   const season = useLiveData()
   const feed = season.raceFeed
+  const [followId, setFollowId] = useState<string | null>(null)
+  const raceKey = season.currentRace?.id ?? null
+
+  useEffect(() => {
+    tvBridge.followId = null
+    setFollowId(null)
+  }, [raceKey])
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setFollowId((cur) => (cur === tvBridge.followId ? cur : tvBridge.followId))
+    }, 180)
+    return () => window.clearInterval(id)
+  }, [])
+
+  const onSelectHorse = useCallback((id: string) => {
+    const next = tvBridge.followId === id ? null : id
+    tvBridge.followId = next
+    tvBridge.userLook = false
+    setFollowId(next)
+  }, [])
   const seedRacers = useMemo(() => {
     if (!season.currentRace || !season.roster.length) return season.roster
     const ids = new Set(season.currentRace.racerIds)
@@ -155,6 +177,8 @@ export function TvView() {
         trackSurface={trackSurface}
         progressRef={feed.progressRef}
         finishOrderRef={feed.finishOrderRef}
+        selectedHorseId={followId}
+        onSelectHorse={onSelectHorse}
       />
     </div>
   )

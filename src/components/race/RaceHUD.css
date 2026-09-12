@@ -320,3 +320,27 @@
 .race-hud__row.is-finished strong {
   color: var(--gold-bright);
 }
+
+.race-hud__order-row.is-selectable,
+.race-hud__row.is-selectable {
+  cursor: pointer;
+}
+
+.race-hud__order-row.is-selectable:hover,
+.race-hud__row.is-selectable:hover {
+  background: rgba(201, 162, 39, 0.14);
+  border-color: rgba(201, 162, 39, 0.45);
+}
+
+.race-hud__row.is-selectable {
+  border-radius: 8px;
+  padding: 0.2rem 0.35rem 0.2rem 0.15rem;
+  border: 1px solid transparent;
+}
+
+.race-hud__order-row.is-tracked,
+.race-hud__row.is-tracked {
+  background: rgba(201, 162, 39, 0.22);
+  border-color: rgba(201, 162, 39, 0.7);
+  box-shadow: 0 0 0 1px rgba(201, 162, 39, 0.35);
+}
