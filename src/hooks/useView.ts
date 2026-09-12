@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 
-export type ViewId = 'race' | 'schedule' | 'standings' | 'seasons' | 'tracks'
+export type ViewId = 'race' | 'tv' | 'schedule' | 'standings' | 'seasons' | 'tracks'
 
-const VALID: ViewId[] = ['race', 'schedule', 'standings', 'seasons', 'tracks']
+const VALID: ViewId[] = ['race', 'tv', 'schedule', 'standings', 'seasons', 'tracks']
 
 function readHash(): ViewId {
   const raw = window.location.hash.replace(/^#\/?/, '').split('?')[0]

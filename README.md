@@ -22,6 +22,7 @@ npm run preview
 | View | Notes |
 |------|--------|
 | **Race** | Full-viewport R3F Churchill oval; Ably live pack when connected |
+| **TV** | Broadcast booth (`#/tv`): camera cuts, lower-thirds, same live feed as Race |
 | **Schedule** | Season card / race-day program table |
 | **Standings** | Points table with jersey swatches |
 | **Seasons** | Active / completed / upcoming season cards |
