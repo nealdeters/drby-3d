@@ -1,8 +1,12 @@
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { PerspectiveCamera } from '@react-three/drei'
+import { OrbitControls, PerspectiveCamera } from '@react-three/drei'
+import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import * as THREE from 'three'
 import { tvBridge, type TvShot } from './tvBridge'
+
+const SPIRES_POS = new THREE.Vector3(-2.5, 5.2, 6.5)
+const SPIRES_LOOK = new THREE.Vector3(0, 7.5, 22)
 
 function shotPose(shot: TvShot) {
   const px = tvBridge.packX
@@ -21,8 +25,8 @@ function shotPose(shot: TvShot) {
     case 'spires':
       // Infield, Twin Spires in frame, stretch horses mid-ground
       return {
-        pos: new THREE.Vector3(-2.5, 5.2, 6.5),
-        look: new THREE.Vector3(0, 7.5, 22),
+        pos: SPIRES_POS.clone(),
+        look: SPIRES_LOOK.clone(),
         fov: 42,
       }
     case 'tower':
@@ -58,14 +62,47 @@ function shotPose(shot: TvShot) {
   }
 }
 
-export function BroadcastCamera() {
+/** Broadcast cuts while the card is live; orbit the oval between races. */
+export function BroadcastCamera({ explore = false }: { explore?: boolean }) {
   const cam = useRef<THREE.PerspectiveCamera>(null)
-  const pos = useRef(new THREE.Vector3(0, 5.2, 8))
-  const look = useRef(new THREE.Vector3(0, 6, 20))
-  const fov = useRef(40)
+  const controls = useRef<OrbitControlsImpl>(null)
+  const pos = useRef(SPIRES_POS.clone())
+  const look = useRef(SPIRES_LOOK.clone())
+  const fov = useRef(42)
+  const wasExplore = useRef(explore)
+  const aimed = useRef(false)
+  const dir = useRef(new THREE.Vector3())
 
   useFrame((_, dt) => {
     if (!cam.current) return
+
+    if (!aimed.current) {
+      cam.current.position.copy(pos.current)
+      cam.current.lookAt(look.current)
+      aimed.current = true
+      if (explore && controls.current) {
+        controls.current.target.copy(look.current)
+        controls.current.update()
+      }
+    }
+
+    if (explore) {
+      if (!wasExplore.current && controls.current) {
+        cam.current.getWorldDirection(dir.current)
+        controls.current.target.copy(cam.current.position).addScaledVector(dir.current, 14)
+        controls.current.update()
+      }
+      wasExplore.current = true
+      return
+    }
+
+    if (wasExplore.current) {
+      pos.current.copy(cam.current.position)
+      cam.current.getWorldDirection(dir.current)
+      look.current.copy(cam.current.position).addScaledVector(dir.current, 14)
+      wasExplore.current = false
+    }
+
     const pose = shotPose(tvBridge.shot)
     const k = 1 - Math.pow(0.08, dt)
     pos.current.lerp(pose.pos, k)
@@ -80,6 +117,27 @@ export function BroadcastCamera() {
   })
 
   return (
-    <PerspectiveCamera ref={cam} makeDefault fov={40} near={0.15} far={240} position={[0, 5.2, 8]} />
+    <>
+      <PerspectiveCamera
+        ref={cam}
+        makeDefault
+        fov={42}
+        near={0.15}
+        far={240}
+        position={[-2.5, 5.2, 6.5]}
+      />
+      <OrbitControls
+        ref={controls}
+        enabled={explore}
+        enableDamping
+        dampingFactor={0.12}
+        enablePan
+        minDistance={5}
+        maxDistance={86}
+        minPolarAngle={0.12}
+        maxPolarAngle={Math.PI / 2 - 0.06}
+        target={[0, 1.2, 0]}
+      />
+    </>
   )
 }

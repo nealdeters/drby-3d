@@ -20,6 +20,7 @@
   display: block;
   width: 100% !important;
   height: 100% !important;
+  touch-action: none;
 }
 
 .tv-thirds {
@@ -215,4 +216,18 @@
 .tv-thirds__meta,
 .tv-thirds__pace {
   display: none;
+}
+
+.tv-thirds__look {
+  position: absolute;
+  left: 50%;
+  bottom: 92px;
+  transform: translateX(-50%);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  background: rgba(8, 10, 14, 0.62);
+  padding: 6px 10px;
+  color: #e8d9a8;
+  white-space: nowrap;
 }

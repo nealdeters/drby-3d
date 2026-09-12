@@ -26,7 +26,10 @@ export function TvLowerThirds({ isRacing, live, trackName }: Props) {
       <div className={live && isRacing ? 'tv-thirds__live' : 'tv-thirds__live is-demo'}>
         {live && isRacing ? 'Live' : live ? 'Hold' : 'Demo'}
       </div>
-      <div className="tv-thirds__shot">{shot}</div>
+      <div className="tv-thirds__shot">{isRacing ? shot : 'look'}</div>
+      {!isRacing ? (
+        <div className="tv-thirds__look">Drag to look around · pinch to zoom</div>
+      ) : null}
     </div>
   )
 }
