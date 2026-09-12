@@ -32,7 +32,7 @@ export const TvScene = memo(function TvScene({
     <Canvas shadows dpr={[1, 1.75]} gl={{ antialias: true, alpha: false }}>
       <color attach="background" args={['#9ec4e6']} />
       <fog attach="fog" args={['#c5d8ea', 110, 240]} />
-      <BroadcastCamera explore={!isRacing} />
+      <BroadcastCamera />
       <Sky
         distance={450000}
         sunPosition={[70, 28, 50]}

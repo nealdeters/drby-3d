@@ -230,4 +230,7 @@
   padding: 6px 10px;
   color: #e8d9a8;
   white-space: nowrap;
+  max-width: calc(100% - 24px);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

@@ -39,7 +39,7 @@ function readOverall(map: Record<string, number> | undefined, id: string): numbe
 }
 
 function shotFromOval(p: number, racing: boolean): TvShot {
-  if (!racing) return 'spires'
+  if (!racing) return 'home'
   const f = fracProgress(p)
   if (f >= 0.46 && f < 0.545) return 'wire'
   if (f >= 0.36 && f < 0.64) return 'stretch'
@@ -90,7 +90,7 @@ export function TvField({
   const lapsRef = useRef(trackLaps)
   const lockedLapsRef = useRef<number | null>(null)
   const raceIdRef = useRef<string | null>(raceId ?? null)
-  const shotHold = useRef({ shot: 'spires' as TvShot, until: 0 })
+  const shotHold = useRef({ shot: 'home' as TvShot, until: 0 })
 
   useEffect(() => {
     const nextId = raceId ?? null

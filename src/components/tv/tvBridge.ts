@@ -1,11 +1,11 @@
 import type { HorseSimState } from '../race/trackMath'
 
-export type TvShot = 'spires' | 'tower' | 'clubhouse' | 'rail' | 'stretch' | 'wire'
+export type TvShot = 'home' | 'spires' | 'tower' | 'clubhouse' | 'rail' | 'stretch' | 'wire'
 
 /** Mutable booth state written by TvField, read by BroadcastCamera + lower-thirds. */
 export const tvBridge = {
   field: [] as HorseSimState[],
-  shot: 'spires' as TvShot,
+  shot: 'home' as TvShot,
   packX: 0,
   packY: 0.7,
   packZ: 11,
@@ -17,4 +17,6 @@ export const tvBridge = {
   elapsedMs: 0,
   trackLaps: 1,
   leaderLap: 1,
+  /** True while the user is orbiting; HUD shows look, broadcast lerp pauses. */
+  userLook: false,
 }

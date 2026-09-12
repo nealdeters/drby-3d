@@ -1,14 +1,40 @@
-import { useRef } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { useEffect, useRef } from 'react'
+import { useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import * as THREE from 'three'
 import { tvBridge, type TvShot } from './tvBridge'
 
-const SPIRES_POS = new THREE.Vector3(-2.5, 5.2, 6.5)
-const SPIRES_LOOK = new THREE.Vector3(0, 7.5, 22)
+const DIR = new THREE.Vector3()
+const DOUBLE_TAP_MS = 320
+const DOUBLE_TAP_PX = 22
+const HOME_HOLD_S = 2.6
+
+/** Infield, slightly ahead of the pack — the gate stretch on load / double-tap. */
+function homePose() {
+  const px = tvBridge.packX
+  const py = tvBridge.packY
+  const pz = tvBridge.packZ
+  const hx = tvBridge.headingX
+  const hz = tvBridge.headingZ
+  const hlen = Math.hypot(hx, hz) || 1
+  const fx = hx / hlen
+  const fz = hz / hlen
+  let ix = -px
+  let iz = -pz
+  const ilen = Math.hypot(ix, iz) || 1
+  ix /= ilen
+  iz /= ilen
+  return {
+    pos: new THREE.Vector3(px + ix * 6.2 + fx * 7.4, 7.6, pz + iz * 6.2 + fz * 7.4),
+    look: new THREE.Vector3(px - fx * 0.8, py + 0.25, pz - fz * 0.8),
+    fov: 34,
+  }
+}
 
 function shotPose(shot: TvShot) {
+  if (shot === 'home') return homePose()
+
   const px = tvBridge.packX
   const py = tvBridge.packY
   const pz = tvBridge.packZ
@@ -17,18 +43,12 @@ function shotPose(shot: TvShot) {
   const len = Math.hypot(hx, hz) || 1
   const fx = hx / len
   const fz = hz / len
-  // Right vector on XZ
   const rx = fz
   const rz = -fx
 
   switch (shot) {
     case 'spires':
-      // Infield, Twin Spires in frame, stretch horses mid-ground
-      return {
-        pos: SPIRES_POS.clone(),
-        look: SPIRES_LOOK.clone(),
-        fov: 42,
-      }
+      return homePose()
     case 'tower':
       return {
         pos: new THREE.Vector3(px + rx * 16 + fx * -6, 13.5, pz + rz * 16 + fz * -6),
@@ -62,48 +82,106 @@ function shotPose(shot: TvShot) {
   }
 }
 
-/** Broadcast cuts while the card is live; orbit the oval between races. */
-export function BroadcastCamera({ explore = false }: { explore?: boolean }) {
+function clampAboveDirt(cam: THREE.PerspectiveCamera, controls: OrbitControlsImpl) {
+  if (controls.target.y < 0.4) controls.target.y = 0.4
+  if (cam.position.y < 0.8) cam.position.y = 0.8
+}
+
+function seedOrbitFromCamera(cam: THREE.PerspectiveCamera, controls: OrbitControlsImpl) {
+  cam.getWorldDirection(DIR)
+  controls.target.copy(cam.position).addScaledVector(DIR, 14)
+  clampAboveDirt(cam, controls)
+}
+
+const BOOT = homePose()
+
+/** Orbit any time; broadcast cuts only while the user is not looking around. Double-tap homes to the gate stretch. */
+export function BroadcastCamera() {
   const cam = useRef<THREE.PerspectiveCamera>(null)
   const controls = useRef<OrbitControlsImpl>(null)
-  const pos = useRef(SPIRES_POS.clone())
-  const look = useRef(SPIRES_LOOK.clone())
-  const fov = useRef(42)
-  const wasExplore = useRef(explore)
+  const pos = useRef(BOOT.pos.clone())
+  const look = useRef(BOOT.look.clone())
+  const fov = useRef(BOOT.fov)
   const aimed = useRef(false)
-  const dir = useRef(new THREE.Vector3())
+  const userLook = useRef(false)
+  const homeUntil = useRef(performance.now() / 1000 + HOME_HOLD_S)
+  const gl = useThree((s) => s.gl)
+
+  const applyHome = () => {
+    const pose = homePose()
+    pos.current.copy(pose.pos)
+    look.current.copy(pose.look)
+    fov.current = pose.fov
+    if (cam.current) {
+      cam.current.position.copy(pose.pos)
+      cam.current.lookAt(pose.look)
+      cam.current.fov = pose.fov
+      cam.current.updateProjectionMatrix()
+    }
+    if (controls.current) {
+      controls.current.target.copy(pose.look)
+      controls.current.enabled = false
+      controls.current.update()
+    }
+  }
+
+  useEffect(() => {
+    const el = gl.domElement
+    let lastT = 0
+    let lastX = 0
+    let lastY = 0
+    const onPointerDown = (e: PointerEvent) => {
+      const now = performance.now()
+      const dx = e.clientX - lastX
+      const dy = e.clientY - lastY
+      if (now - lastT < DOUBLE_TAP_MS && dx * dx + dy * dy < DOUBLE_TAP_PX * DOUBLE_TAP_PX) {
+        e.preventDefault()
+        e.stopImmediatePropagation()
+        lastT = 0
+        userLook.current = false
+        tvBridge.userLook = false
+        homeUntil.current = Number.POSITIVE_INFINITY
+        applyHome()
+        return
+      }
+      lastT = now
+      lastX = e.clientX
+      lastY = e.clientY
+      userLook.current = true
+      tvBridge.userLook = true
+      homeUntil.current = 0
+      if (cam.current && controls.current) {
+        controls.current.enabled = true
+        seedOrbitFromCamera(cam.current, controls.current)
+        controls.current.update()
+      }
+    }
+    el.addEventListener('pointerdown', onPointerDown, true)
+    return () => el.removeEventListener('pointerdown', onPointerDown, true)
+  }, [gl])
 
   useFrame((_, dt) => {
     if (!cam.current) return
 
     if (!aimed.current) {
-      cam.current.position.copy(pos.current)
-      cam.current.lookAt(look.current)
+      applyHome()
       aimed.current = true
-      if (explore && controls.current) {
-        controls.current.target.copy(look.current)
-        controls.current.update()
-      }
     }
 
-    if (explore) {
-      if (!wasExplore.current && controls.current) {
-        cam.current.getWorldDirection(dir.current)
-        controls.current.target.copy(cam.current.position).addScaledVector(dir.current, 14)
-        controls.current.update()
-      }
-      wasExplore.current = true
+    if (controls.current) {
+      controls.current.enabled = userLook.current
+      clampAboveDirt(cam.current, controls.current)
+    }
+
+    if (userLook.current) {
+      pos.current.copy(cam.current.position)
+      cam.current.getWorldDirection(DIR)
+      look.current.copy(cam.current.position).addScaledVector(DIR, 14)
       return
     }
 
-    if (wasExplore.current) {
-      pos.current.copy(cam.current.position)
-      cam.current.getWorldDirection(dir.current)
-      look.current.copy(cam.current.position).addScaledVector(dir.current, 14)
-      wasExplore.current = false
-    }
-
-    const pose = shotPose(tvBridge.shot)
+    const nowS = performance.now() / 1000
+    const pose = nowS < homeUntil.current || !tvBridge.racing ? homePose() : shotPose(tvBridge.shot)
     const k = 1 - Math.pow(0.08, dt)
     pos.current.lerp(pose.pos, k)
     look.current.lerp(pose.look, k)
@@ -114,6 +192,7 @@ export function BroadcastCamera({ explore = false }: { explore?: boolean }) {
       cam.current.fov = fov.current
       cam.current.updateProjectionMatrix()
     }
+    if (controls.current) controls.current.target.copy(look.current)
   })
 
   return (
@@ -121,14 +200,14 @@ export function BroadcastCamera({ explore = false }: { explore?: boolean }) {
       <PerspectiveCamera
         ref={cam}
         makeDefault
-        fov={42}
+        fov={BOOT.fov}
         near={0.15}
         far={240}
-        position={[-2.5, 5.2, 6.5]}
+        position={[BOOT.pos.x, BOOT.pos.y, BOOT.pos.z]}
       />
       <OrbitControls
         ref={controls}
-        enabled={explore}
+        enabled={false}
         enableDamping
         dampingFactor={0.12}
         enablePan
@@ -136,7 +215,9 @@ export function BroadcastCamera({ explore = false }: { explore?: boolean }) {
         maxDistance={86}
         minPolarAngle={0.12}
         maxPolarAngle={Math.PI / 2 - 0.06}
-        target={[0, 1.2, 0]}
+        onChange={() => {
+          if (cam.current && controls.current) clampAboveDirt(cam.current, controls.current)
+        }}
       />
     </>
   )
