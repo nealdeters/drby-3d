@@ -45,7 +45,7 @@ function shotFromOval(p: number, racing: boolean): TvShot {
   if (f >= 0.36 && f < 0.64) return 'stretch'
   if (f >= 0.16 && f < 0.36) return 'clubhouse'
   if (f >= 0.70 && f < 0.90) return 'tower'
-  return 'rail'
+  return 'home'
 }
 
 /** Lap 1-based from live overall, else oval wraps past the wire (demo). */

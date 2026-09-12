@@ -29,7 +29,7 @@ function followPose() {
   }
 }
 
-/** Infield, slightly ahead of the pack — the gate stretch on load / double-tap. */
+/** Behind the pack, rail-side — load / Hold / double-tap aerial tracks with the field. */
 function homePose() {
   const px = tvBridge.packX
   const py = tvBridge.packY
@@ -39,14 +39,12 @@ function homePose() {
   const hlen = Math.hypot(hx, hz) || 1
   const fx = hx / hlen
   const fz = hz / hlen
-  let ix = -px
-  let iz = -pz
-  const ilen = Math.hypot(ix, iz) || 1
-  ix /= ilen
-  iz /= ilen
+  // Right of travel = inside rail on a CCW oval (same side as the rail shot).
+  const rx = fz
+  const rz = -fx
   return {
-    pos: new THREE.Vector3(px + ix * 6.2 + fx * 7.4, 7.6, pz + iz * 6.2 + fz * 7.4),
-    look: new THREE.Vector3(px - fx * 0.8, py + 0.25, pz - fz * 0.8),
+    pos: new THREE.Vector3(px + rx * 5.6 + fx * -8.4, 5.2, pz + rz * 5.6 + fz * -8.4),
+    look: new THREE.Vector3(px + fx * 3.4, py + 0.32, pz + fz * 3.4),
     fov: 34,
   }
 }
@@ -114,7 +112,7 @@ function seedOrbitFromCamera(cam: THREE.PerspectiveCamera, controls: OrbitContro
 
 const BOOT = homePose()
 
-/** Orbit any time; broadcast cuts only while the user is not looking around. Double-tap homes to the gate stretch. */
+/** Orbit any time; broadcast cuts only while the user is not looking around. Double-tap homes to the behind-the-field aerial. */
 export function BroadcastCamera() {
   const cam = useRef<THREE.PerspectiveCamera>(null)
   const controls = useRef<OrbitControlsImpl>(null)
