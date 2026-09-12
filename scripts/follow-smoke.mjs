@@ -153,29 +153,56 @@ function compressOverallToPack(overall, leaderOverall, laps) {
 function crossedFinish(overall) {
   return typeof overall === 'number' && overall >= 0.999
 }
-function parkAtFinish(s, dt, followRate) {
-  followOvalToward(s, GATE_OVAL, dt, followRate, 1)
-  if (onStartWire(s.progress, 0.015)) {
+function pastOrOnFinishWire(progress) {
+  const p = fracProgress(progress)
+  if (onStartWire(p, 0.02)) return true
+  const past = ovalForwardDelta(GATE_OVAL, p)
+  return past > 0 && past < 0.5
+}
+function parkAtFinish(s, dt, _followRate) {
+  s.overallRate = 0
+  const p = fracProgress(s.progress)
+  if (pastOrOnFinishWire(p)) {
     s.progress = Math.floor(s.progress) + GATE_OVAL
     s.pace = 0
-    return true
+    return
+  }
+  const dist = ovalForwardDelta(p, GATE_OVAL)
+  if (!(dist > 0) || dist > 0.08) {
+    s.progress = Math.floor(s.progress) + GATE_OVAL
+    s.pace = 0
+    return
+  }
+  const close = Math.max(0.025, dist * Math.min(1, Math.max(0, dt) * 16))
+  s.progress = advanceProgress(s.progress, Math.min(dist, close))
+  if (pastOrOnFinishWire(s.progress) || onStartWire(s.progress, 0.02)) {
+    s.progress = Math.floor(s.progress) + GATE_OVAL
+    s.pace = 0
+    return
   }
   s.pace = 0.45
-  return false
 }
 
 assert('crossedFinish 1', crossedFinish(1))
 assert('crossedFinish 0.998 not yet', !crossedFinish(0.998))
 {
-  const s = { progress: 0.45, pace: 1.1 }
-  let parked = false
-  for (let i = 0; i < 80; i++) parked = parkAtFinish(s, 1 / 60, 14)
-  assert('finish jog reaches wire idle', parked && onStartWire(s.progress) && s.pace === 0, `pos=${fracProgress(s.progress)} pace=${s.pace}`)
+  const s = { progress: GATE_OVAL, pace: 1.2, overallRate: 0.04 }
+  parkAtFinish(s, 1 / 60, 14)
+  assert('finish on wire idle this frame', s.pace === 0 && onStartWire(s.progress) && s.overallRate === 0, `pos=${s.progress} pace=${s.pace}`)
 }
 {
-  const s = { progress: GATE_OVAL, pace: 1.2 }
+  const s = { progress: 0.53, pace: 1.1, overallRate: 0.04 }
   parkAtFinish(s, 1 / 60, 14)
-  assert('already on wire stops immediately', s.pace === 0 && onStartWire(s.progress))
+  assert('finish past wire snaps idle not jog', s.pace === 0 && Math.abs(fracProgress(s.progress) - GATE_OVAL) < 1e-9, `pos=${fracProgress(s.progress)} pace=${s.pace}`)
+}
+{
+  const s = { progress: 0.45, pace: 1.1 }
+  for (let i = 0; i < 60; i++) parkAtFinish(s, 1 / 60, 14)
+  assert('finish slightly before wire idle within 1s', onStartWire(s.progress) && s.pace === 0, `pos=${fracProgress(s.progress)} pace=${s.pace}`)
+}
+{
+  const s = { progress: GATE_OVAL, pace: 0 }
+  assert('pre-race still idle at pace 0', s.pace === 0 && onStartWire(s.progress))
 }
 
 

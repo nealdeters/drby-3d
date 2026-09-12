@@ -216,6 +216,14 @@ export function crossedFinish(overall: number | undefined): boolean {
   return typeof overall === 'number' && overall >= 0.999
 }
 
+/** On the wire, or already past it (overshoot) — not still approaching. */
+export function pastOrOnFinishWire(progress: number): boolean {
+  const p = fracProgress(progress)
+  if (onStartWire(p, 0.02)) return true
+  const past = ovalForwardDelta(GATE_OVAL, p)
+  return past > 0 && past < 0.5
+}
+
 /**
  * Squeeze overall gaps so a multi-lap deficit still reads as a pack on the oval.
  * Order is preserved; finishers are not compressed.
@@ -229,15 +237,33 @@ export function compressOverallToPack(overall: number, leaderOverall: number, la
   return leaderOverall - shownLap / L
 }
 
-export function parkAtFinish(s: HorseSimState, dt: number, followRate: number): void {
-  followOvalToward(s, GATE_OVAL, dt, followRate, 1)
-  if (onStartWire(s.progress, 0.015)) {
+/**
+ * Finished horse: stop the gallop this frame if on/past the wire.
+ * A short last-length jog is only allowed while clearly short of the line.
+ */
+export function parkAtFinish(s: HorseSimState, dt: number, _followRate?: number): void {
+  s.overallRate = 0
+  const p = fracProgress(s.progress)
+  if (pastOrOnFinishWire(p)) {
     s.progress = Math.floor(s.progress) + GATE_OVAL
     s.pace = 0
-    s.overallRate = 0
     return
   }
-  // Jog the last few lengths to the wire, then the idle pose takes over.
+  const dist = ovalForwardDelta(p, GATE_OVAL)
+  // More than a few lengths short: snap home rather than gallop around to the line.
+  if (!(dist > 0) || dist > 0.08) {
+    s.progress = Math.floor(s.progress) + GATE_OVAL
+    s.pace = 0
+    return
+  }
+  // Last lengths: close quickly so we idle within ~1s at 60fps.
+  const close = Math.max(0.025, dist * Math.min(1, Math.max(0, dt) * 16))
+  s.progress = advanceProgress(s.progress, Math.min(dist, close))
+  if (pastOrOnFinishWire(s.progress) || onStartWire(s.progress, 0.02)) {
+    s.progress = Math.floor(s.progress) + GATE_OVAL
+    s.pace = 0
+    return
+  }
   s.pace = 0.45
 }
 

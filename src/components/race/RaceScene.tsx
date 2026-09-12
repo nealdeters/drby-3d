@@ -281,29 +281,36 @@ function RacingField({
           }
         }
         if (typeof s.lastOverall !== 'number') {
-          if (!isRacing) s.pace = 0
+          if (!isRacing) {
+            s.pace = 0
+            s.overallRate = 0
+          }
           return
         }
         if (crossedFinish(s.lastOverall)) {
           parkAtFinish(s, clamped, followRate)
           return
         }
+        // Race over: every remaining horse stops the stride (no in-place gallop).
+        if (!isRacing) {
+          s.pace = 0
+          s.overallRate = 0
+          return
+        }
         let overall = coastOverall(
           s.lastOverall,
           s.overallRate,
           typeof s.lastSampleAt === 'number' ? (now - s.lastSampleAt) / 1000 : 0,
-          isRacing && s.lastOverall > 0.001 && s.lastOverall < 0.999,
+          s.lastOverall > 0.001 && s.lastOverall < 0.999,
         )
         if (crossedFinish(overall)) {
           parkAtFinish(s, clamped, followRate)
           return
         }
-        if (isRacing) {
-          overall = compressOverallToPack(overall, leaderOverall, laps)
-        }
+        overall = compressOverallToPack(overall, leaderOverall, laps)
         const tgt = overallToOvalProgress(overall, laps)
         const delta = followOvalToward(s, tgt, clamped, followRate, overall)
-        if (!isRacing || overall <= 0.001) {
+        if (overall <= 0.001) {
           s.pace = 0
         } else {
           s.pace = Math.max(0.85, Math.min(1.35, 0.9 + delta * 8))
