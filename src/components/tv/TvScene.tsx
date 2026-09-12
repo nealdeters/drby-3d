@@ -2,10 +2,9 @@ import { memo, type MutableRefObject } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { Environment, Sky } from '@react-three/drei'
 import type { Horse } from '../../data/fakeSeason'
-import type { TrackSurface } from '../race/Track'
+import { Track, type TrackSurface } from '../race/Track'
 import { BroadcastCamera } from './BroadcastCamera'
 import { TvField } from './TvField'
-import { TvTrack } from './TvTrack'
 
 export type TvSceneProps = {
   horses: Horse[]
@@ -60,7 +59,7 @@ export const TvScene = memo(function TvScene({
         shadow-bias={-0.00025}
       />
       <directionalLight position={[-18, 14, -8]} intensity={0.28} color="#9ab6d8" />
-      <TvTrack key={surface} surface={surface} />
+      <Track key={surface} surface={surface} />
       <TvField
         horses={horses}
         liveFeed={liveFeed}
