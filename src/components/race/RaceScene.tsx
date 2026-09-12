@@ -10,6 +10,7 @@ import {
   GATE_OVAL,
   clearLiveMotion,
   coastOverall,
+  compressOverallToPack,
   createFieldState,
   crossedFinish,
   followOvalToward,
@@ -251,6 +252,13 @@ function RacingField({
 
       raceAgeRef.current += clamped
       const now = performance.now()
+      let leaderOverall = 0
+      if (isRacing) {
+        for (const st of states) {
+          const v = st.lastOverall
+          if (typeof v === 'number' && v > leaderOverall) leaderOverall = v
+        }
+      }
 
       horses.forEach((h, i) => {
         const s = states[i]
@@ -280,7 +288,7 @@ function RacingField({
           parkAtFinish(s, clamped, followRate)
           return
         }
-        const overall = coastOverall(
+        let overall = coastOverall(
           s.lastOverall,
           s.overallRate,
           typeof s.lastSampleAt === 'number' ? (now - s.lastSampleAt) / 1000 : 0,
@@ -289,6 +297,9 @@ function RacingField({
         if (crossedFinish(overall)) {
           parkAtFinish(s, clamped, followRate)
           return
+        }
+        if (isRacing) {
+          overall = compressOverallToPack(overall, leaderOverall, laps)
         }
         const tgt = overallToOvalProgress(overall, laps)
         const delta = followOvalToward(s, tgt, clamped, followRate, overall)

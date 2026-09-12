@@ -216,6 +216,19 @@ export function crossedFinish(overall: number | undefined): boolean {
   return typeof overall === 'number' && overall >= 0.999
 }
 
+/**
+ * Squeeze overall gaps so a multi-lap deficit still reads as a pack on the oval.
+ * Order is preserved; finishers are not compressed.
+ */
+export function compressOverallToPack(overall: number, leaderOverall: number, laps: number): number {
+  if (!(leaderOverall > 0) || !(overall >= 0) || overall >= leaderOverall) return overall
+  if (overall >= 0.999 || leaderOverall >= 0.999) return overall
+  const L = laps > 0 ? laps : 1
+  const lapGap = (leaderOverall - overall) * L
+  const shownLap = Math.tanh(lapGap / 0.14) * 0.11
+  return leaderOverall - shownLap / L
+}
+
 export function parkAtFinish(s: HorseSimState, dt: number, followRate: number): void {
   followOvalToward(s, GATE_OVAL, dt, followRate, 1)
   if (onStartWire(s.progress, 0.015)) {

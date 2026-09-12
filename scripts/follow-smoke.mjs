@@ -141,6 +141,15 @@ assert('stale 0.99 vs 0.98 is rewind', isRewind(0.98, 0.99))
 }
 
 
+
+function compressOverallToPack(overall, leaderOverall, laps) {
+  if (!(leaderOverall > 0) || !(overall >= 0) || overall >= leaderOverall) return overall
+  if (overall >= 0.999 || leaderOverall >= 0.999) return overall
+  const L = laps > 0 ? laps : 1
+  const lapGap = (leaderOverall - overall) * L
+  const shownLap = Math.tanh(lapGap / 0.14) * 0.11
+  return leaderOverall - shownLap / L
+}
 function crossedFinish(overall) {
   return typeof overall === 'number' && overall >= 0.999
 }
@@ -167,6 +176,23 @@ assert('crossedFinish 0.998 not yet', !crossedFinish(0.998))
   const s = { progress: GATE_OVAL, pace: 1.2 }
   parkAtFinish(s, 1 / 60, 14)
   assert('already on wire stops immediately', s.pace === 0 && onStartWire(s.progress))
+}
+
+
+{
+  const lead = 0.80
+  const a = compressOverallToPack(0.80, lead, 3)
+  const b = compressOverallToPack(0.70, lead, 3)
+  const c = compressOverallToPack(0.50, lead, 3)
+  assert('leader uncompressed', a === lead)
+  assert('trailer stays behind', b < lead && c < b)
+  const bLap = (lead - b) * 3
+  const cLap = (lead - c) * 3
+  assert('3-lap half-race deficit still under 0.12 lap on oval', cLap < 0.12, `cLap=${cLap}`)
+  assert('order preserved', bLap < cLap)
+}
+{
+  assert('no compress at finish', compressOverallToPack(0.95, 1, 3) === 0.95)
 }
 
 if (fail.length) {
