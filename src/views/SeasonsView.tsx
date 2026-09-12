@@ -39,6 +39,7 @@ export function SeasonsView() {
   const [selectedKey, setSelectedKey] = useState<string | null>(() =>
     typeof window !== 'undefined' ? readSeasonHash() : null,
   )
+  const [showAllRaces, setShowAllRaces] = useState(false)
 
   useEffect(() => {
     const onPop = () => setSelectedKey(readSeasonHash())
@@ -101,6 +102,10 @@ export function SeasonsView() {
     () => selectedRaces.filter((r) => r.completed && r.results && r.results.length > 0),
     [selectedRaces],
   )
+  const visibleRaces = useMemo(() => {
+    if (showAllRaces || raceResults.length <= 80) return raceResults
+    return raceResults.slice(-80)
+  }, [raceResults, showAllRaces])
 
   const nameOf = (id: string) => {
     const h = horseById(id)
@@ -252,12 +257,24 @@ export function SeasonsView() {
             ) : (
               <div className="season-results">
                 <p className="muted" style={{ marginTop: 0 }}>
-                  {raceResults.length} races with a finish order
+                  {showAllRaces || raceResults.length <= 80
+                    ? `${raceResults.length} races with a finish order`
+                    : `Latest 80 of ${raceResults.length} races with a finish order`}
                   {selectedRaces.length > raceResults.length
                     ? ` · ${selectedRaces.length - raceResults.length} washed / no result`
                     : ''}
                 </p>
-                {raceResults.map((race) => (
+                {raceResults.length > 80 && (
+                  <button
+                    type="button"
+                    className="btn"
+                    style={{ marginBottom: '0.75rem' }}
+                    onClick={() => setShowAllRaces((v) => !v)}
+                  >
+                    {showAllRaces ? 'Show latest 80' : 'Show all races'}
+                  </button>
+                )}
+                {visibleRaces.map((race) => (
                   <div key={race.id} className="season-race-row">
                     <div>
                       <strong>{race.track?.name ?? race.id}</strong>
