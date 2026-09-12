@@ -12,7 +12,7 @@ type Props = {
   surface: TrackSurface
 }
 
-type Particle = {
+type Speck = {
   alive: boolean
   age: number
   life: number
@@ -20,58 +20,55 @@ type Particle = {
   y: number
   z: number
   vx: number
-  vy: number
   vz: number
   scale: number
 }
 
-const COUNT = 14
+const COUNT = 6
 const _obj = new THREE.Object3D()
 
 function kickColor(surface: TrackSurface): string {
-  if (surface === 'asphalt') return '#c5ccd4'
-  if (surface === 'grass' || surface === 'turf') return '#d7e6a4'
-  return '#e6c9a0'
+  if (surface === 'asphalt') return '#8b939c'
+  if (surface === 'grass' || surface === 'turf') return '#8fa56a'
+  return '#c4a078'
 }
 
 /**
- * Light hoof spray so pace reads from the grandstand: more / higher when
- * a horse is gaining, thinner and shorter when they fade. Idle = none.
+ * Faint ground-hugging scuff so the pack reads as moving without a particle storm.
+ * Density follows live overallRate (real pace), not follow-lag. Idle / gate = none.
  */
 export function Kickup({ horseId, index, fieldRef, surface }: Props) {
   const mesh = useRef<THREE.InstancedMesh>(null)
-  const parts = useRef<Particle[]>(
+  const parts = useRef<Speck[]>(
     Array.from({ length: COUNT }, () => ({
       alive: false,
       age: 0,
       life: 1,
       x: 0,
-      y: 0,
+      y: 0.055,
       z: 0,
       vx: 0,
-      vy: 0,
       vz: 0,
-      scale: 0.4,
+      scale: 0.2,
     })),
   )
   const emitAcc = useRef(0)
-  const prevPace = useRef(0)
   const color = useMemo(() => kickColor(surface), [surface])
 
   useFrame((_, dt) => {
     const clamped = Math.min(dt, 0.05)
     const s = fieldRef.current.find((st) => st.id === horseId) ?? fieldRef.current[index]
     const pace = s?.pace ?? 0
-    const dPace = pace - prevPace.current
-    prevPace.current = pace
+    const rate = s?.overallRate
     const moving = pace > 0.12
-    const gaining = moving && dPace > 0.004
-    const fading = moving && dPace < -0.004
-    const gain = moving ? THREE.MathUtils.clamp(dPace * 10 + (pace - 0.95) * 1.6, 0, 2.2) : 0
-    const rate = moving
-      ? (5 + pace * 16 + gain * 12) * (fading ? 0.4 : gaining ? 1.35 : 1)
+    // Typical live slope is ~0.02–0.04 overall/s. Demo has no rate — whisper from pace.
+    const speed = moving
+      ? typeof rate === 'number'
+        ? THREE.MathUtils.clamp(rate / 0.035, 0.35, 1.15)
+        : THREE.MathUtils.clamp(0.45 + (pace - 0.9) * 0.6, 0.35, 1.0)
       : 0
-    emitAcc.current += clamped * rate
+    const emitRate = moving ? 1.1 + speed * 1.6 : 0
+    emitAcc.current += clamped * emitRate
 
     const pos = s ? trackPoint(s.progress, s.radial) : null
     const tan = s ? trackTangent(s.progress, s.radial) : null
@@ -79,19 +76,18 @@ export function Kickup({ horseId, index, fieldRef, surface }: Props) {
     while (moving && emitAcc.current >= 1 && pos && tan) {
       emitAcc.current -= 1
       const slot = parts.current.find((p) => !p.alive) ?? parts.current[Math.floor(Math.random() * COUNT)]
-      const side = (Math.random() - 0.5) * 0.7
-      const back = 0.45 + Math.random() * 0.85
+      const side = (Math.random() - 0.5) * 0.28
+      const back = 0.55 + Math.random() * 0.5
       slot.alive = true
       slot.age = 0
-      slot.life = fading ? 0.28 + Math.random() * 0.18 : 0.5 + Math.random() * 0.4
+      slot.life = 0.22 + Math.random() * 0.18
       slot.x = pos.x - tan.x * back + tan.z * side
-      slot.y = 0.1 + Math.random() * 0.08
+      slot.y = 0.05
       slot.z = pos.z - tan.z * back - tan.x * side
-      const kick = (fading ? 0.45 : 1 + gain * 0.55) * (0.65 + Math.random() * 0.7)
-      slot.vx = -tan.x * kick * 0.4 + (Math.random() - 0.5) * 0.55
-      slot.vy = (fading ? 0.45 : 1.05 + gain * 0.7) * (0.55 + Math.random() * 0.7)
-      slot.vz = -tan.z * kick * 0.4 + (Math.random() - 0.5) * 0.55
-      slot.scale = (fading ? 0.38 : 0.55 + pace * 0.22 + gain * 0.12) * (0.75 + Math.random() * 0.55)
+      const drift = 0.12 + Math.random() * 0.1
+      slot.vx = -tan.x * drift + (Math.random() - 0.5) * 0.08
+      slot.vz = -tan.z * drift + (Math.random() - 0.5) * 0.08
+      slot.scale = (0.16 + speed * 0.06) * (0.85 + Math.random() * 0.3)
     }
     if (!moving) emitAcc.current = 0
 
@@ -105,23 +101,16 @@ export function Kickup({ horseId, index, fieldRef, surface }: Props) {
           p.alive = false
         } else {
           p.x += p.vx * clamped
-          p.y += p.vy * clamped
           p.z += p.vz * clamped
-          p.vy -= 3.1 * clamped
-          p.vx *= 0.95
-          p.vz *= 0.95
-          if (p.y < 0.05) {
-            p.y = 0.05
-            p.vy *= -0.08
-            p.vx *= 0.65
-            p.vz *= 0.65
-          }
+          p.vx *= 0.9
+          p.vz *= 0.9
         }
       }
       const t = p.alive ? 1 - p.age / p.life : 0
-      const sc = p.alive ? p.scale * (0.5 + t * 0.75) : 0
+      const sc = p.alive ? p.scale * (0.55 + t * 0.55) : 0
       _obj.position.set(p.x, p.y, p.z)
-      _obj.scale.set(sc, sc * 0.7, sc)
+      // Flattened disc — reads as a scuff on the strip, not a puff in air.
+      _obj.scale.set(sc, sc * 0.12, sc)
       _obj.updateMatrix()
       im.setMatrixAt(i, _obj.matrix)
     }
@@ -129,9 +118,9 @@ export function Kickup({ horseId, index, fieldRef, surface }: Props) {
   })
 
   return (
-    <instancedMesh ref={mesh} args={[undefined, undefined, COUNT]} frustumCulled={false} renderOrder={3}>
-      <sphereGeometry args={[1, 6, 6]} />
-      <meshBasicMaterial color={color} transparent opacity={0.62} depthWrite={false} />
+    <instancedMesh ref={mesh} args={[undefined, undefined, COUNT]} frustumCulled={false} renderOrder={2}>
+      <sphereGeometry args={[1, 5, 4]} />
+      <meshBasicMaterial color={color} transparent opacity={0.22} depthWrite={false} />
     </instancedMesh>
   )
 }
