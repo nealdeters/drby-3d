@@ -48,4 +48,18 @@ if (fail.length) {
   process.exit(1)
 }
 console.log('gallop carousel check ok')
+
+const idsDump = ['fl', 'fr', 'hl', 'hr'] as const
+for (let i = 0; i < 8; i++) {
+  const pose = sampleGallop(i / 8)
+  const row: Record<string, unknown> = {
+    phase: i / 8,
+    poles: countCarouselPoles(pose),
+    airborne: Number(pose.airborne.toFixed(2)),
+  }
+  for (const id of idsDump) {
+    row[id] = { swing: Number(pose.swing[id].toFixed(3)), knee: Number(pose.knee[id].toFixed(3)) }
+  }
+  console.log('phase', JSON.stringify(row))
+}
 void wrap01
