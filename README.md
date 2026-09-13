@@ -37,7 +37,9 @@ Affluent race-day program aesthetic — cream / navy / gold, manicured turf infi
 
 Race (`#/`) and TV (`#/tv`) share a procedural left-lead transverse gallop (`src/components/race/gallop.ts`): hind→hind→fore→fore, then a suspension beat. Stance is short; gather vs airborne drives barrel pitch, neck/head opposition, and tail follow. Gate (`pace <= 0.08`) is a standstill — no walking in place.
 
-The TV horse is still `public/tv/models/riding-horse.glb` (standing, unskinned). Legs / neck / head / tail are vertex-shader posed (`tv-gallop-v2`). Race uses the low-poly box rig. Jockeys are a two-point race seat (hips over the irons, folded torso, posting against gather/suspension, short-rein arm give, helmet quieter than the hips). No new horse pack.
+The TV horse is still `public/tv/models/riding-horse.glb` (standing, unskinned). Legs / neck / head / tail are vertex-shader posed (`tv-gallop-v3`). Race uses the low-poly box rig. Jockeys are a two-point race seat (hips over the irons, folded torso, posting against gather/suspension, short-rein arm give, helmet quieter than the hips). No new horse pack.
+
+Flight hips do not lerp through the standing pose (that read as two carousel poles hanging straight down). When a hip crosses 0 the knee is already folded ~90°. The TV knee pivot rotates with the hip so the joint stays on the bone.
 
 ## Live backend
 

@@ -228,7 +228,7 @@ function bindGallopMaterials(root: THREE.Object3D): GallopRig {
       const mat = m as THREE.MeshStandardMaterial
       if (!mat || mat.userData.tvGallopShader) continue
       mat.userData.tvGallopShader = true
-      mat.customProgramCacheKey = () => 'tv-gallop-v2'
+      mat.customProgramCacheKey = () => 'tv-gallop-v3'
       mat.onBeforeCompile = (shader) => {
         shader.uniforms.uLegSwing = { value: rig.swing }
         shader.uniforms.uLegKnee = { value: rig.knee }
@@ -276,9 +276,11 @@ if (legId > 0.5) {
   else if (legId < 3.5) { swing = uLegSwing.z; knee = uLegKnee.z; }
   else { swing = uLegSwing.w; knee = uLegKnee.w; }
   vec3 p = transformed - legPivot;
+  // Rotate the rest-space knee offset with the hip so the joint stays on the bone.
+  vec3 k = vec3(0.0, -0.38, 0.0);
+  tvRx(k, swing);
   tvRx(p, swing);
-  if (legAlong > 0.42) {
-    vec3 k = vec3(0.0, -0.38, 0.0);
+  if (legAlong > 0.36) {
     vec3 q = p - k;
     tvRx(q, knee);
     p = q + k;
@@ -312,10 +314,10 @@ if (legId > 0.5) {
   else if (legId < 3.5) { swing = uLegSwing.z; knee = uLegKnee.z; }
   else { swing = uLegSwing.w; knee = uLegKnee.w; }
   tvRx(objectNormal, swing);
-  if (legAlong > 0.42) tvRx(objectNormal, knee);
+  if (legAlong > 0.36) tvRx(objectNormal, knee);
 #ifdef USE_TANGENT
   tvRx(objectTangent, swing);
-  if (legAlong > 0.42) tvRx(objectTangent, knee);
+  if (legAlong > 0.36) tvRx(objectTangent, knee);
 #endif
 } else if (partId > 4.5) {
   float a = 0.0;
