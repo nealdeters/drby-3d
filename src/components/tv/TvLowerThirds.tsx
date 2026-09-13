@@ -11,12 +11,16 @@ export function TvLowerThirds({ isRacing, live, trackName }: Props) {
   const [shot, setShot] = useState(tvBridge.shot)
   const [userLook, setUserLook] = useState(tvBridge.userLook)
   const [followId, setFollowId] = useState(tvBridge.followId)
+  const [leaderLap, setLeaderLap] = useState(tvBridge.leaderLap)
+  const [trackLaps, setTrackLaps] = useState(tvBridge.trackLaps)
 
   useEffect(() => {
     const id = window.setInterval(() => {
       setShot(tvBridge.shot)
       setUserLook(tvBridge.userLook)
       setFollowId(tvBridge.followId)
+      setLeaderLap(tvBridge.leaderLap)
+      setTrackLaps(tvBridge.trackLaps)
     }, 180)
     return () => window.clearInterval(id)
   }, [])
@@ -29,6 +33,9 @@ export function TvLowerThirds({ isRacing, live, trackName }: Props) {
       <div className="tv-thirds__bug">
         <span className="tv-thirds__net">DRBY TV</span>
         <span className="tv-thirds__meet">{trackName ?? 'Churchill dirt'}</span>
+        <span className="tv-thirds__lap">
+          Lap {Math.max(1, leaderLap)} / {trackLaps > 0 ? trackLaps : 1}
+        </span>
       </div>
       <div className={live && isRacing ? 'tv-thirds__live' : 'tv-thirds__live is-demo'}>
         {live && isRacing ? 'Live' : live ? 'Hold' : 'Demo'}

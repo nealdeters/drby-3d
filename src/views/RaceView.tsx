@@ -162,6 +162,7 @@ export function RaceView() {
         trackSurface={trackSurface}
         progressRef={feed.progressRef}
         finishOrderRef={feed.finishOrderRef}
+        trackLaps={trackLaps}
       />
     </div>
   )

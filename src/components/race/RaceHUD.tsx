@@ -24,6 +24,8 @@ type Props = {
   /** TV only: highlight + follow this horse. Race page omits these. */
   selectedHorseId?: string | null
   onSelectHorse?: (id: string) => void
+  /** Scheduled / locked lap count for this card (not compressed display). */
+  trackLaps?: number
 }
 
 type OrderRow = {
@@ -40,6 +42,14 @@ function formatClock(totalSec: number): string {
   const mm = String(Math.floor(s / 60)).padStart(2, '0')
   const ss = String(s % 60).padStart(2, '0')
   return `${mm}:${ss}`
+}
+
+/** 1-based lap from raw overall 0–1. Never use compressOverallToPack. */
+function lapFromOverall(overall: number, laps: number): number {
+  const L = laps > 0 ? Math.floor(laps) : 1
+  if (!Number.isFinite(overall) || overall <= 0) return 1
+  if (overall >= 0.999) return L
+  return Math.min(L, Math.max(1, Math.floor(overall * L) + 1))
 }
 
 function luminance(hex: string): number {
@@ -66,6 +76,7 @@ export function RaceHUD({
   finishOrderRef,
   selectedHorseId = null,
   onSelectHorse,
+  trackLaps = 1,
 }: Props) {
   const live =
     currentRace ??
@@ -80,6 +91,7 @@ export function RaceHUD({
 
   const [countdown, setCountdown] = useState(0)
   const [order, setOrder] = useState<OrderRow[]>([])
+  const [leaderLap, setLeaderLap] = useState(1)
 
   useEffect(() => {
     if (isRacing) {
@@ -113,6 +125,7 @@ export function RaceHUD({
     return horses
   }, [horses, live])
 
+  const laps = trackLaps > 0 ? Math.floor(trackLaps) : 1
   const selectable = typeof onSelectHorse === 'function'
   const rowClass = (row: OrderRow, base: string) => {
     const done = row.progress >= 1
@@ -178,12 +191,19 @@ export function RaceHUD({
       return [...finishedRows, ...racingRows]
     }
 
-    setOrder(build())
-    const id = window.setInterval(() => {
-      setOrder(build())
-    }, 160) // ~6 Hz
+    const publish = () => {
+      const rows = build()
+      setOrder(rows)
+      let lead = 0
+      for (const row of rows) {
+        if (row.progress > lead) lead = row.progress
+      }
+      setLeaderLap(lapFromOverall(lead, laps))
+    }
+    publish()
+    const id = window.setInterval(publish, 160) // ~6 Hz
     return () => window.clearInterval(id)
-  }, [fieldHorses, progressRef, finishOrderRef])
+  }, [fieldHorses, progressRef, finishOrderRef, laps])
 
   const raceTimeLabel = formatClock(elapsedMs / 1000)
   const countdownLabel = formatClock(countdown)
@@ -208,6 +228,7 @@ export function RaceHUD({
           <h2>{live?.name ?? 'DRBY Race'}</h2>
           <p className="muted">
             {trackName ?? 'Track'}
+            {` · ${laps} lap${laps === 1 ? '' : 's'}`}
             {live && live.purse > 0 ? ` · ${formatPurse(live.purse)} purse` : ''}
             {isRacing ? ' · racing' : ''}
           </p>
@@ -233,13 +254,14 @@ export function RaceHUD({
             <>
               <span className="muted">Race time</span>
               <strong>{raceTimeLabel}</strong>
-              {live && <span className="muted">{live.name}</span>}
+              <span className="race-hud__laps">Lap {leaderLap} / {laps}</span>
             </>
           ) : (
             <>
               <span className="muted">{upcoming ? 'Next race' : 'Countdown'}</span>
               <strong>{upcoming ? countdownLabel : '—'}</strong>
               {upcoming && <span className="muted">{upcoming.name}</span>}
+              <span className="muted">{laps} lap{laps === 1 ? '' : 's'}</span>
             </>
           )}
         </div>
@@ -300,7 +322,6 @@ export function RaceHUD({
         </div>
         <div className="panel-body race-hud__field">
           {order.map((row) => {
-            const h = fieldHorses.find((x) => x.id === row.id)
             const fg = luminance(row.jersey) > 0.55 ? '#142038' : '#ffffff'
             const done = row.progress >= 1
             return (
@@ -329,7 +350,9 @@ export function RaceHUD({
                 </span>
                 <div>
                   <strong>{row.name}</strong>
-                  <div className="muted">{done ? 'Finished' : (h?.jockey ?? '—')}</div>
+                  <div className="muted">
+                    {done ? 'Finished' : `Lap ${lapFromOverall(row.progress, laps)} / ${laps}`}
+                  </div>
                 </div>
               </div>
             )

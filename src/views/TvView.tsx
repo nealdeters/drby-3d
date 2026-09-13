@@ -179,6 +179,7 @@ export function TvView() {
         finishOrderRef={feed.finishOrderRef}
         selectedHorseId={followId}
         onSelectHorse={onSelectHorse}
+        trackLaps={trackLaps}
       />
     </div>
   )
