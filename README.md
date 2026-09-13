@@ -33,6 +33,12 @@ Mobile: hamburger drawer. Desktop: top tabs.
 
 Affluent race-day program aesthetic — cream / navy / gold, manicured turf infield, sandy dirt, Twin Spires silhouette — dusk UI; wood-tier grandstand set back from the outer rail.
 
+## Motion
+
+Race (`#/`) and TV (`#/tv`) share a procedural left-lead transverse gallop (`src/components/race/gallop.ts`): hind→hind→fore→fore, then a suspension beat. Stance is short; gather vs airborne drives barrel pitch, neck/head opposition, and tail follow. Gate (`pace <= 0.08`) is a standstill — no walking in place.
+
+The TV horse is still `public/tv/models/riding-horse.glb` (standing, unskinned). Legs / neck / head / tail are vertex-shader posed (`tv-gallop-v2`). Race uses the low-poly box rig. Jockeys are a two-point race seat (hips over the irons, folded torso, posting against gather/suspension, short-rein arm give, helmet quieter than the hips). No new horse pack.
+
 ## Live backend
 
 Same API as https://drby-live.netlify.app + drby_scheduler.

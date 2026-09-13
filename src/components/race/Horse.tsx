@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import type { Horse as HorseData } from '../../data/fakeSeason'
 import type { HorseSimState } from './trackMath'
 import { trackPoint, trackTangent } from './trackMath'
+import { GATE_POSE, sampleGallop, wrap01, type GallopSample } from './gallop'
 
 type Props = {
   horse: HorseData
@@ -18,9 +19,19 @@ type LegRefs = {
   knee: THREE.Group
 }
 
+type JockeyRefs = {
+  hips: THREE.Group
+  torso: THREE.Group
+  helm: THREE.Group
+  armL: THREE.Group
+  armR: THREE.Group
+  thighL: THREE.Group
+  thighR: THREE.Group
+}
+
 /**
- * Low-poly thoroughbred with a readable gallop:
- * hind/fore phase offsets, knee bend, body/neck bob scaled by pace.
+ * Low-poly thoroughbred with a left-lead transverse gallop:
+ * hind→hind→fore→fore, then a suspension beat. Jockey is a two-point seat.
  */
 export function HorseMesh({ horse, index, fieldRef }: Props) {
   const root = useRef<THREE.Group>(null)
@@ -29,13 +40,14 @@ export function HorseMesh({ horse, index, fieldRef }: Props) {
   const head = useRef<THREE.Group>(null)
   const tail = useRef<THREE.Group>(null)
   const jockey = useRef<THREE.Group>(null)
+  const jockeyBits = useRef<JockeyRefs | null>(null)
 
   const fl = useRef<LegRefs | null>(null)
   const fr = useRef<LegRefs | null>(null)
   const hl = useRef<LegRefs | null>(null)
   const hr = useRef<LegRefs | null>(null)
 
-  const gait = useRef(Math.random() * Math.PI * 2)
+  const gait = useRef(Math.random())
 
   const coat = horse.coat
   const coatDark = useMemo(() => darken(coat, 0.22), [coat])
@@ -59,80 +71,57 @@ export function HorseMesh({ horse, index, fieldRef }: Props) {
 
     const pos = trackPoint(s.progress, s.radial)
     const tan = trackTangent(s.progress, s.radial)
+    root.current.rotation.y = Math.atan2(tan.x, tan.z)
 
     // At the gate (pace ~0) stand still — no walking in place before the break.
     if (s.pace <= 0.08) {
-      applyLeg(hl.current, 0, true)
-      applyLeg(hr.current, 0, true)
-      applyLeg(fl.current, 0, false)
-      applyLeg(fr.current, 0, false)
+      applyPose(GATE_POSE)
       root.current.position.set(pos.x, 0.12, pos.z)
-      root.current.rotation.y = Math.atan2(tan.x, tan.z)
       root.current.rotation.z = 0
       root.current.rotation.x = 0
-      if (body.current) {
-        body.current.position.y = 0
-        body.current.rotation.x = 0
-      }
-      if (neck.current) neck.current.rotation.x = 0.35
-      if (head.current) head.current.rotation.x = -0.15
-      if (tail.current) {
-        tail.current.rotation.x = 0.35
-        tail.current.rotation.y = 0
-      }
-      if (jockey.current) {
-        jockey.current.position.y = 0.92
-        jockey.current.rotation.x = 0.35
-      }
       return
     }
 
-    // Gallop frequency scales with race pace (not just sliding along the rail)
-    const strideHz = 2.4 + s.pace * 2.2
-    gait.current += dt * strideHz * Math.PI * 2
-    const g = gait.current
+    const strideHz = 2.35 + s.pace * 2.15
+    gait.current = wrap01(gait.current + dt * strideHz)
+    const pose = sampleGallop(gait.current)
+    applyPose(pose)
+    root.current.position.set(pos.x, 0.12 + pose.bob, pos.z)
+    root.current.rotation.z = pose.barrelRoll
+    root.current.rotation.x = pose.barrelPitch * 0.45
+  })
 
-    // Transverse gallop phasing (approx left lead):
-    // hind left → hind right → fore left → fore right
-    const hlA = Math.sin(g)
-    const hrA = Math.sin(g + 0.55)
-    const flA = Math.sin(g + Math.PI + 0.25)
-    const frA = Math.sin(g + Math.PI + 0.85)
-
-    applyLeg(hl.current, hlA, true)
-    applyLeg(hr.current, hrA, true)
-    applyLeg(fl.current, flA, false)
-    applyLeg(fr.current, frA, false)
-
-    // Suspension / gather bob — two peaks per stride cycle feel horse-like
-    const bob = Math.sin(g * 2) * 0.055
-    const gather = Math.max(0, -Math.sin(g * 2)) * 0.03
-
-    root.current.position.set(pos.x, 0.12 + bob, pos.z)
-    root.current.rotation.y = Math.atan2(tan.x, tan.z)
-    // Slight roll into the stride
-    root.current.rotation.z = Math.sin(g) * 0.03
-    root.current.rotation.x = Math.sin(g * 2) * 0.025
+  function applyPose(pose: GallopSample) {
+    applyLeg(hl.current, pose.swing.hl, pose.knee.hl)
+    applyLeg(hr.current, pose.swing.hr, pose.knee.hr)
+    applyLeg(fl.current, pose.swing.fl, pose.knee.fl)
+    applyLeg(fr.current, pose.swing.fr, pose.knee.fr)
 
     if (body.current) {
-      body.current.position.y = gather
-      body.current.rotation.x = Math.sin(g * 2) * 0.04
+      body.current.position.y = pose.gather * 0.028
+      body.current.rotation.x = pose.barrelPitch
     }
-    if (neck.current) {
-      neck.current.rotation.x = 0.35 + Math.sin(g * 2 + 0.4) * 0.12
-    }
-    if (head.current) {
-      head.current.rotation.x = -0.15 + Math.sin(g * 2 + 0.8) * 0.08
-    }
+    if (neck.current) neck.current.rotation.x = 0.35 + pose.neckPitch
+    if (head.current) head.current.rotation.x = -0.15 + pose.headPitch
     if (tail.current) {
-      tail.current.rotation.x = 0.35 + Math.sin(g * 2 + 1.2) * 0.25
-      tail.current.rotation.y = Math.sin(g * 1.5) * 0.15
+      tail.current.rotation.x = 0.35 + pose.tailPitch
+      tail.current.rotation.y = pose.tailYaw
     }
     if (jockey.current) {
-      jockey.current.position.y = 0.92 + bob * 0.35
-      jockey.current.rotation.x = 0.35 + Math.sin(g * 2) * 0.04
+      jockey.current.position.set(0, 0.92 + pose.hipY, -0.02 + pose.hipZ)
+      jockey.current.rotation.x = 0.12 + pose.foldDelta * 0.25
     }
-  })
+    const j = jockeyBits.current
+    if (j) {
+      j.hips.position.y = pose.hipY * 0.15
+      j.torso.rotation.x = 0.55 + pose.foldDelta
+      j.helm.rotation.x = pose.helmetPitch
+      j.armL.rotation.x = 0.55 + pose.armGive
+      j.armR.rotation.x = 0.55 + pose.armGive
+      j.thighL.rotation.x = 0.85 + pose.thighDelta
+      j.thighR.rotation.x = 0.85 + pose.thighDelta
+    }
+  }
 
   return (
     <group ref={root} frustumCulled={false}>
@@ -278,44 +267,14 @@ export function HorseMesh({ horse, index, fieldRef }: Props) {
           }}
         />
 
-        {/* Jockey silhouette */}
+        {/* Two-point jockey: hips over irons, folded torso, helmet quieter than the seat */}
         <group ref={jockey} position={[0, 0.92, -0.02]}>
-          {/* Crouched torso in silks */}
-          <mesh castShadow position={[0, 0.28, 0.05]} rotation={[0.55, 0, 0]}>
-            <boxGeometry args={[0.28, 0.32, 0.22]} />
-            <meshStandardMaterial color={horse.jersey} roughness={0.55} metalness={0.1} />
-          </mesh>
-          {/* Helmet */}
-          <mesh castShadow position={[0, 0.52, 0.18]}>
-            <sphereGeometry args={[0.11, 10, 10]} />
-            <meshStandardMaterial color={horse.jersey} roughness={0.45} metalness={0.15} />
-          </mesh>
-          <mesh position={[0, 0.48, 0.18]}>
-            <sphereGeometry args={[0.08, 8, 8]} />
-            <meshStandardMaterial color="#e8c4a8" roughness={0.7} />
-          </mesh>
-          {/* Arms to reins */}
-          <mesh castShadow position={[-0.18, 0.3, 0.22]} rotation={[0.6, 0.3, 0.4]}>
-            <boxGeometry args={[0.07, 0.07, 0.32]} />
-            <meshStandardMaterial color={horse.jersey} />
-          </mesh>
-          <mesh castShadow position={[0.18, 0.3, 0.22]} rotation={[0.6, -0.3, -0.4]}>
-            <boxGeometry args={[0.07, 0.07, 0.32]} />
-            <meshStandardMaterial color={horse.jersey} />
-          </mesh>
-          {/* Breeches / boots */}
-          <mesh castShadow position={[0, 0.08, -0.02]} rotation={[0.2, 0, 0]}>
-            <boxGeometry args={[0.24, 0.16, 0.2]} />
-            <meshStandardMaterial color="#f0ebe3" roughness={0.7} />
-          </mesh>
-          <mesh castShadow position={[-0.1, -0.02, 0.02]} rotation={[0.5, 0, 0]}>
-            <boxGeometry args={[0.08, 0.2, 0.08]} />
-            <meshStandardMaterial color="#1a1410" />
-          </mesh>
-          <mesh castShadow position={[0.1, -0.02, 0.02]} rotation={[0.5, 0, 0]}>
-            <boxGeometry args={[0.08, 0.2, 0.08]} />
-            <meshStandardMaterial color="#1a1410" />
-          </mesh>
+          <JockeySilks
+            jersey={horse.jersey}
+            bind={(bits) => {
+              jockeyBits.current = bits
+            }}
+          />
         </group>
       </group>
 
@@ -346,6 +305,96 @@ export function HorseMesh({ horse, index, fieldRef }: Props) {
   )
 }
 
+function JockeySilks({
+  jersey,
+  bind,
+}: {
+  jersey: string
+  bind: (bits: JockeyRefs) => void
+}) {
+  const hips = useRef<THREE.Group>(null)
+  const torso = useRef<THREE.Group>(null)
+  const helm = useRef<THREE.Group>(null)
+  const armL = useRef<THREE.Group>(null)
+  const armR = useRef<THREE.Group>(null)
+  const thighL = useRef<THREE.Group>(null)
+  const thighR = useRef<THREE.Group>(null)
+  const bound = useRef(false)
+
+  useFrame(() => {
+    if (
+      !bound.current &&
+      hips.current &&
+      torso.current &&
+      helm.current &&
+      armL.current &&
+      armR.current &&
+      thighL.current &&
+      thighR.current
+    ) {
+      bind({
+        hips: hips.current,
+        torso: torso.current,
+        helm: helm.current,
+        armL: armL.current,
+        armR: armR.current,
+        thighL: thighL.current,
+        thighR: thighR.current,
+      })
+      bound.current = true
+    }
+  })
+
+  return (
+    <group ref={hips}>
+      <group ref={thighL} position={[-0.1, -0.02, 0.04]} rotation={[0.85, 0.08, 0.12]}>
+        <mesh castShadow position={[0, -0.1, 0.02]}>
+          <boxGeometry args={[0.08, 0.2, 0.08]} />
+          <meshStandardMaterial color="#1a1410" />
+        </mesh>
+      </group>
+      <group ref={thighR} position={[0.1, -0.02, 0.04]} rotation={[0.85, -0.08, -0.12]}>
+        <mesh castShadow position={[0, -0.1, 0.02]}>
+          <boxGeometry args={[0.08, 0.2, 0.08]} />
+          <meshStandardMaterial color="#1a1410" />
+        </mesh>
+      </group>
+      <mesh castShadow position={[0, 0.08, -0.02]} rotation={[0.2, 0, 0]}>
+        <boxGeometry args={[0.24, 0.16, 0.2]} />
+        <meshStandardMaterial color="#f0ebe3" roughness={0.7} />
+      </mesh>
+      <group ref={torso} position={[0, 0.22, 0.02]} rotation={[0.55, 0, 0]}>
+        <mesh castShadow position={[0, 0.1, 0.04]}>
+          <boxGeometry args={[0.28, 0.32, 0.22]} />
+          <meshStandardMaterial color={jersey} roughness={0.55} metalness={0.1} />
+        </mesh>
+        <group ref={armL} position={[-0.16, 0.08, 0.12]} rotation={[0.55, 0.28, 0.35]}>
+          <mesh castShadow position={[0, 0, 0.14]}>
+            <boxGeometry args={[0.07, 0.07, 0.32]} />
+            <meshStandardMaterial color={jersey} />
+          </mesh>
+        </group>
+        <group ref={armR} position={[0.16, 0.08, 0.12]} rotation={[0.55, -0.28, -0.35]}>
+          <mesh castShadow position={[0, 0, 0.14]}>
+            <boxGeometry args={[0.07, 0.07, 0.32]} />
+            <meshStandardMaterial color={jersey} />
+          </mesh>
+        </group>
+        <group ref={helm} position={[0, 0.28, 0.14]}>
+          <mesh castShadow>
+            <sphereGeometry args={[0.11, 10, 10]} />
+            <meshStandardMaterial color={jersey} roughness={0.45} metalness={0.15} />
+          </mesh>
+          <mesh position={[0, -0.04, 0.02]}>
+            <sphereGeometry args={[0.08, 8, 8]} />
+            <meshStandardMaterial color="#e8c4a8" roughness={0.7} />
+          </mesh>
+        </group>
+      </group>
+    </group>
+  )
+}
+
 function Leg({
   side,
   z,
@@ -369,7 +418,6 @@ function Leg({
   const knee = useRef<THREE.Group>(null)
   const bound = useRef(false)
 
-  // Bind once groups exist (first commit after mount)
   useFrame(() => {
     if (!bound.current && hip.current && knee.current) {
       bind(hip.current, knee.current)
@@ -383,7 +431,6 @@ function Leg({
 
   return (
     <group ref={hip} position={[side * 0.14, hipY, z]}>
-      {/* Upper limb */}
       <mesh castShadow position={[0, -upperLen * 0.5, 0]}>
         <boxGeometry args={[0.1, upperLen, 0.12]} />
         <meshStandardMaterial color={coat} roughness={0.82} />
@@ -393,7 +440,6 @@ function Leg({
           <boxGeometry args={[0.08, lowerLen * 0.9, 0.08]} />
           <meshStandardMaterial color={coatDark} roughness={0.8} />
         </mesh>
-        {/* Fetlock / sock */}
         <mesh castShadow position={[0, -lowerLen * 0.92, 0]}>
           <boxGeometry args={[0.075, 0.1, 0.075]} />
           <meshStandardMaterial color={sock} roughness={0.85} />
@@ -407,16 +453,10 @@ function Leg({
   )
 }
 
-function applyLeg(leg: LegRefs | null, swing: number, hind: boolean) {
+function applyLeg(leg: LegRefs | null, swing: number, knee: number) {
   if (!leg) return
-  // Hip swings in pitch; hind has slightly larger reach
-  const hipAmp = hind ? 0.72 : 0.62
-  const kneeBase = hind ? 0.35 : 0.25
-  const kneeAmp = hind ? 0.85 : 0.95
-  leg.hip.rotation.x = swing * hipAmp
-  // Knee folds more on the recovery (negative swing)
-  const fold = Math.max(0, -swing)
-  leg.knee.rotation.x = kneeBase + fold * kneeAmp
+  leg.hip.rotation.x = swing
+  leg.knee.rotation.x = knee
 }
 
 function plateLuminance(hex: string): number {
