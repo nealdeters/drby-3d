@@ -5,11 +5,16 @@ const _meshInv = new THREE.Matrix4()
 const _v = new THREE.Vector3()
 const _hip = new THREE.Vector3()
 const _hoof = new THREE.Vector3()
+const _knee = new THREE.Vector3()
 const _tmp = new THREE.Vector3()
+const _bone = new THREE.Vector3()
 
 type Hit = { mesh: THREE.Mesh; i: number; x: number; y: number; z: number }
 
 type Acc = { x: number; y: number; z: number; n: number }
+
+/** Fraction of hip→hoof where the carpus / hock hinge sits. Must match the shader. */
+export const KNEE_ALONG = 0.42
 
 function skipCoatMesh(matName: string, metalness: number | undefined): boolean {
   if (/timber|metal|leather/i.test(matName)) return true
@@ -17,16 +22,23 @@ function skipCoatMesh(matName: string, metalness: number | undefined): boolean {
   return false
 }
 
+export type LimbBox = {
+  id: 1 | 2 | 3 | 4
+  n: number
+  min: [number, number, number]
+  max: [number, number, number]
+  centroid: [number, number, number]
+  xSpan: number
+  ySpan: number
+  zSpan: number
+}
+
 /**
  * Tag limb vertices into FL/FR/HL/HR (legId 1–4) plus neck/head/tail (partId 5–7).
  *
- * The standing riding-horse GLB has no clips. Previous tagging only accepted
- * /hide/ verts below mid-height AND outside a 42–58% Z dead zone. On this mesh
- * the fore cannons sit in that dead zone (~z=0), so FL/FR got ~0 verts and
- * stayed in the rest pose — two carousel poles under a waving pair of hinds.
- *
- * Fix: cluster ALL coat geometry below the barrel by x-sign × z-fore/hind,
- * seeded from hoof k-means. No Z dead zone.
+ * Standing riding-horse GLB has no clips. Cluster coat verts into **thin limb
+ * columns** around hoof k-means seeds (tight xz radius + z-fore/hind band) so
+ * the shader rotates hip–knee–hoof cannons, not the chest/shoulder mass.
  */
 export function ensureGallopAttributes(root: THREE.Object3D) {
   root.updateMatrixWorld(true)
@@ -155,8 +167,12 @@ export function ensureGallopAttributes(root: THREE.Object3D) {
   }
 
   const tagged: { hit: Hit; id: number; part: number }[] = []
-  const maxR = 0.24
+  // Cannon-thin column: hoof-seed cylinder, not a chest-width flood.
+  const maxR = 0.078
   const maxR2 = maxR * maxR
+  const maxDx = 0.08
+  const maxDz = 0.085
+  const yHipBand = yBarrel - ySpan * 0.1
 
   for (const h of hits) {
     let id = 0
@@ -172,11 +188,10 @@ export function ensureGallopAttributes(root: THREE.Object3D) {
           bi = k
         }
       }
-      // Prefer xz proximity to a hoof; also take obvious side-cannons (|x| large, low).
-      const yCannon = minY + ySpan * 0.38
-      if (bd <= maxR2 || (Math.abs(h.x) >= 0.08 && h.y <= yCannon)) {
-        id = seedLeg[bi]
-      }
+      const s = seeds[bi]
+      const inCol =
+        bd <= maxR2 && Math.abs(h.x - s.x) <= maxDx && Math.abs(h.z - s.z) <= maxDz
+      if (inCol) id = seedLeg[bi]
     }
 
     let part = id
@@ -198,7 +213,7 @@ export function ensureGallopAttributes(root: THREE.Object3D) {
     }
     const hip = hips[id as 1 | 2 | 3 | 4]
     const hoof = hoofs[id as 1 | 2 | 3 | 4]
-    if (h.y > yBarrel - ySpan * 0.14) {
+    if (h.y >= yHipBand) {
       hip.x += h.x
       hip.y += h.y
       hip.z += h.z
@@ -245,7 +260,14 @@ export function ensureGallopAttributes(root: THREE.Object3D) {
 
   const byGeom = new Map<
     THREE.BufferGeometry,
-    { id: Float32Array; pivot: Float32Array; along: Float32Array; part: Float32Array; partPivot: Float32Array }
+    {
+      id: Float32Array
+      pivot: Float32Array
+      along: Float32Array
+      knee: Float32Array
+      part: Float32Array
+      partPivot: Float32Array
+    }
   >()
 
   for (const { hit, id, part } of tagged) {
@@ -257,6 +279,7 @@ export function ensureGallopAttributes(root: THREE.Object3D) {
         id: new Float32Array(n),
         pivot: new Float32Array(n * 3),
         along: new Float32Array(n),
+        knee: new Float32Array(n * 3),
         part: new Float32Array(n),
         partPivot: new Float32Array(n * 3),
       }
@@ -269,13 +292,20 @@ export function ensureGallopAttributes(root: THREE.Object3D) {
       const hoof = hoofs[id as 1 | 2 | 3 | 4]
       _hip.set(hip.x, hip.y, hip.z)
       _hoof.set(hoof.x, hoof.y, hoof.z)
+      _knee.lerpVectors(_hip, _hoof, KNEE_ALONG)
       _meshInv.copy(hit.mesh.matrixWorld).invert()
       _tmp.copy(_hip).applyMatrix4(root.matrixWorld).applyMatrix4(_meshInv)
       bag.pivot[hit.i * 3] = _tmp.x
       bag.pivot[hit.i * 3 + 1] = _tmp.y
       bag.pivot[hit.i * 3 + 2] = _tmp.z
-      const span = Math.max(0.001, hip.y - (hoof.n ? hoof.y : minY))
-      bag.along[hit.i] = THREE.MathUtils.clamp((hip.y - hit.y) / span, 0, 1)
+      _tmp.copy(_knee).applyMatrix4(root.matrixWorld).applyMatrix4(_meshInv)
+      bag.knee[hit.i * 3] = _tmp.x
+      bag.knee[hit.i * 3 + 1] = _tmp.y
+      bag.knee[hit.i * 3 + 2] = _tmp.z
+      _bone.subVectors(_hoof, _hip)
+      const len2 = _bone.lengthSq()
+      _tmp.set(hit.x, hit.y, hit.z).sub(_hip)
+      bag.along[hit.i] = len2 <= 1e-8 ? 0 : THREE.MathUtils.clamp(_tmp.dot(_bone) / len2, 0, 1)
     } else if (part === 5 || part === 6 || part === 7) {
       const pv = parts[part]
       _meshInv.copy(hit.mesh.matrixWorld).invert()
@@ -290,10 +320,13 @@ export function ensureGallopAttributes(root: THREE.Object3D) {
     geom.setAttribute('legId', new THREE.BufferAttribute(bag.id, 1))
     geom.setAttribute('legPivot', new THREE.BufferAttribute(bag.pivot, 3))
     geom.setAttribute('legAlong', new THREE.BufferAttribute(bag.along, 1))
+    geom.setAttribute('legKnee', new THREE.BufferAttribute(bag.knee, 3))
     geom.setAttribute('partId', new THREE.BufferAttribute(bag.part, 1))
     geom.setAttribute('partPivot', new THREE.BufferAttribute(bag.partPivot, 3))
-    geom.userData.tvGallop = 'v4'
+    geom.userData.tvGallop = 'v5'
   }
+
+  root.userData.gallopLimbStats = measureGallopLimbs(root)
 }
 
 /** Count tagged verts after ensureGallopAttributes — diagnostic / tests. */
@@ -316,4 +349,54 @@ export function countGallopTags(root: THREE.Object3D): { legId: number[]; partId
     }
   })
   return { legId, partId }
+}
+
+/** Root-space AABBs of tagged cannons (legId 1–4). */
+export function measureGallopLimbs(root: THREE.Object3D): LimbBox[] {
+  root.updateMatrixWorld(true)
+  _rootInv.copy(root.matrixWorld).invert()
+  const acc: Record<1 | 2 | 3 | 4, { n: number; sx: number; sy: number; sz: number; min: number[]; max: number[] }> = {
+    1: { n: 0, sx: 0, sy: 0, sz: 0, min: [Infinity, Infinity, Infinity], max: [-Infinity, -Infinity, -Infinity] },
+    2: { n: 0, sx: 0, sy: 0, sz: 0, min: [Infinity, Infinity, Infinity], max: [-Infinity, -Infinity, -Infinity] },
+    3: { n: 0, sx: 0, sy: 0, sz: 0, min: [Infinity, Infinity, Infinity], max: [-Infinity, -Infinity, -Infinity] },
+    4: { n: 0, sx: 0, sy: 0, sz: 0, min: [Infinity, Infinity, Infinity], max: [-Infinity, -Infinity, -Infinity] },
+  }
+  root.traverse((obj) => {
+    const mesh = obj as THREE.Mesh
+    if (!mesh.isMesh || !mesh.geometry) return
+    const lids = mesh.geometry.getAttribute('legId')
+    const pos = mesh.geometry.attributes.position
+    if (!lids || !pos) return
+    for (let i = 0; i < lids.count; i++) {
+      const raw = Math.round(lids.getX(i))
+      if (raw !== 1 && raw !== 2 && raw !== 3 && raw !== 4) continue
+      const id = raw
+      _v.fromBufferAttribute(pos, i).applyMatrix4(mesh.matrixWorld).applyMatrix4(_rootInv)
+      const b = acc[id]
+      b.n++
+      b.sx += _v.x
+      b.sy += _v.y
+      b.sz += _v.z
+      if (_v.x < b.min[0]) b.min[0] = _v.x
+      if (_v.y < b.min[1]) b.min[1] = _v.y
+      if (_v.z < b.min[2]) b.min[2] = _v.z
+      if (_v.x > b.max[0]) b.max[0] = _v.x
+      if (_v.y > b.max[1]) b.max[1] = _v.y
+      if (_v.z > b.max[2]) b.max[2] = _v.z
+    }
+  })
+  return ([1, 2, 3, 4] as const).map((id) => {
+    const b = acc[id]
+    const n = Math.max(1, b.n)
+    return {
+      id,
+      n: b.n,
+      min: [b.min[0], b.min[1], b.min[2]] as [number, number, number],
+      max: [b.max[0], b.max[1], b.max[2]] as [number, number, number],
+      centroid: [b.sx / n, b.sy / n, b.sz / n] as [number, number, number],
+      xSpan: b.max[0] - b.min[0],
+      ySpan: b.max[1] - b.min[1],
+      zSpan: b.max[2] - b.min[2],
+    }
+  })
 }

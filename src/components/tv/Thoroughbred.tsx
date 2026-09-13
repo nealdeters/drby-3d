@@ -33,7 +33,7 @@ type JockeyRefs = {
   thighR: THREE.Group
 }
 
-function bindGallopMaterials(root: THREE.Object3D): GallopRig {
+export function bindGallopMaterials(root: THREE.Object3D): GallopRig {
   const existing = root.userData.gallop as GallopRig | undefined
   if (existing) return existing
   const rig: GallopRig = {
@@ -50,7 +50,7 @@ function bindGallopMaterials(root: THREE.Object3D): GallopRig {
       const mat = m as THREE.MeshStandardMaterial
       if (!mat || mat.userData.tvGallopShader) continue
       mat.userData.tvGallopShader = true
-      mat.customProgramCacheKey = () => 'tv-gallop-v4'
+      mat.customProgramCacheKey = () => 'tv-gallop-v5'
       mat.onBeforeCompile = (shader) => {
         shader.uniforms.uLegSwing = { value: rig.swing }
         shader.uniforms.uLegKnee = { value: rig.knee }
@@ -63,6 +63,7 @@ function bindGallopMaterials(root: THREE.Object3D): GallopRig {
 attribute float legId;
 attribute vec3 legPivot;
 attribute float legAlong;
+attribute vec3 legKnee;
 attribute float partId;
 attribute vec3 partPivot;
 uniform vec4 uLegSwing;
@@ -98,11 +99,11 @@ if (legId > 0.5) {
   else if (legId < 3.5) { swing = uLegSwing.z; knee = uLegKnee.z; }
   else { swing = uLegSwing.w; knee = uLegKnee.w; }
   vec3 p = transformed - legPivot;
-  // Rotate the rest-space knee offset with the hip so the joint stays on the bone.
-  vec3 k = vec3(0.0, -0.38, 0.0);
+  // Knee is tagged at KNEE_ALONG along hip→hoof so the hinge stays on the bone.
+  vec3 k = legKnee - legPivot;
   tvRx(k, swing);
   tvRx(p, swing);
-  if (legAlong > 0.36) {
+  if (legAlong > 0.42) {
     vec3 q = p - k;
     tvRx(q, knee);
     p = q + k;
@@ -136,10 +137,10 @@ if (legId > 0.5) {
   else if (legId < 3.5) { swing = uLegSwing.z; knee = uLegKnee.z; }
   else { swing = uLegSwing.w; knee = uLegKnee.w; }
   tvRx(objectNormal, swing);
-  if (legAlong > 0.36) tvRx(objectNormal, knee);
+  if (legAlong > 0.42) tvRx(objectNormal, knee);
 #ifdef USE_TANGENT
   tvRx(objectTangent, swing);
-  if (legAlong > 0.36) tvRx(objectTangent, knee);
+  if (legAlong > 0.42) tvRx(objectTangent, knee);
 #endif
 } else if (partId > 4.5) {
   float a = 0.0;
@@ -161,7 +162,7 @@ if (legId > 0.5) {
   return rig
 }
 
-function cloneHorse(scene: THREE.Object3D, coatHex: string) {
+export function cloneHorse(scene: THREE.Object3D, coatHex: string) {
   ensureGallopAttributes(scene)
   const root = scene.clone(true)
   const coat = new THREE.Color(coatHex)
@@ -195,7 +196,7 @@ function plateLuminance(hex: string): number {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b
 }
 
-function applyGallop(rig: GallopRig | undefined, pose: GallopSample | null) {
+export function applyGallop(rig: GallopRig | undefined, pose: GallopSample | null) {
   if (!rig) return
   if (!pose) {
     rig.swing.set(0, 0, 0, 0)
