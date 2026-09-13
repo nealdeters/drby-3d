@@ -38,12 +38,14 @@ function metersToFurlongs(meters: number): number {
 }
 
 export function mapLiveRacerToHorse(r: LiveRacer, index: number): Horse {
+  // Kenny / Frederico / Carmella's Dream: silk color is the body color too.
+  const bodyFromSilk = r.id === 'r4' || r.id === 'r9' || r.id === 'r10'
   return {
     id: r.id,
     name: r.name,
     number: r.lane > 0 ? r.lane : index + 1,
     jersey: r.color || '#c44536',
-    coat: COATS[index % COATS.length],
+    coat: bodyFromSilk && r.color ? r.color : COATS[index % COATS.length],
     jockey: '—',
     speedBias: Math.max(0.9, Math.min(1.1, (r.baseSpeed || 80) / 80)),
   }
