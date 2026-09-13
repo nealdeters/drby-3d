@@ -29,7 +29,7 @@ function followPose() {
   }
 }
 
-/** Behind the pack, rail-side — load / Hold / double-tap aerial tracks with the field. */
+/** Clubhouse is the primary — load / Hold / double-tap tracks with the field. */
 function homePose() {
   const px = tvBridge.packX
   const py = tvBridge.packY
@@ -43,8 +43,8 @@ function homePose() {
   const rx = fz
   const rz = -fx
   return {
-    pos: new THREE.Vector3(px + rx * 5.6 + fx * -8.4, 5.2, pz + rz * 5.6 + fz * -8.4),
-    look: new THREE.Vector3(px + fx * 3.4, py + 0.32, pz + fz * 3.4),
+    pos: new THREE.Vector3(px + rx * 9 + fx * -4, 4.8, pz + rz * 9 + fz * -4),
+    look: new THREE.Vector3(px + fx * 3, py + 0.5, pz + fz * 3),
     fov: 34,
   }
 }
@@ -73,11 +73,7 @@ function shotPose(shot: TvShot) {
         fov: 36,
       }
     case 'clubhouse':
-      return {
-        pos: new THREE.Vector3(px + rx * 9 + fx * -4, 4.8, pz + rz * 9 + fz * -4),
-        look: new THREE.Vector3(px + fx * 3, py + 0.5, pz + fz * 3),
-        fov: 34,
-      }
+      return homePose()
     case 'rail':
       return {
         pos: new THREE.Vector3(px + rx * 5.2 + fx * -1.4, 2.15, pz + rz * 5.2 + fz * -1.4),
@@ -112,7 +108,7 @@ function seedOrbitFromCamera(cam: THREE.PerspectiveCamera, controls: OrbitContro
 
 const BOOT = homePose()
 
-/** Orbit any time; broadcast cuts only while the user is not looking around. Double-tap homes to the behind-the-field aerial. */
+/** Orbit any time; broadcast cuts only while the user is not looking around. Double-tap homes to the clubhouse. */
 export function BroadcastCamera() {
   const cam = useRef<THREE.PerspectiveCamera>(null)
   const controls = useRef<OrbitControlsImpl>(null)

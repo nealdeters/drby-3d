@@ -21,7 +21,8 @@ export function TvLowerThirds({ isRacing, live, trackName }: Props) {
     return () => window.clearInterval(id)
   }, [])
 
-  const chip = followId ? 'follow' : userLook ? 'look' : !isRacing ? 'home' : shot
+  const raw = followId ? 'follow' : userLook ? 'look' : !isRacing ? 'clubhouse' : shot
+  const chip = raw === 'home' || raw === 'spires' ? 'clubhouse' : raw
 
   return (
     <div className="tv-thirds">
@@ -35,10 +36,10 @@ export function TvLowerThirds({ isRacing, live, trackName }: Props) {
       <div className="tv-thirds__shot">{chip}</div>
       <div className="tv-thirds__look">
         {followId
-          ? 'Following · tap again to drop · double-tap aerial'
+          ? 'Following · tap again to drop · double-tap clubhouse'
           : userLook
-            ? 'Double-tap for the aerial'
-            : 'Tap a racer to follow · drag to look around · double-tap aerial'}
+            ? 'Double-tap for the clubhouse'
+            : 'Tap a racer to follow · drag to look around · double-tap clubhouse'}
       </div>
     </div>
   )

@@ -5,7 +5,7 @@ export type TvShot = 'home' | 'spires' | 'tower' | 'clubhouse' | 'rail' | 'stret
 /** Mutable booth state written by TvField, read by BroadcastCamera + lower-thirds. */
 export const tvBridge = {
   field: [] as HorseSimState[],
-  shot: 'home' as TvShot,
+  shot: 'clubhouse' as TvShot,
   packX: 0,
   packY: 0.7,
   packZ: 11,
@@ -19,7 +19,7 @@ export const tvBridge = {
   leaderLap: 1,
   /** True while the user is orbiting; HUD shows look, broadcast lerp pauses. */
   userLook: false,
-  /** TV position-bar follow. Null = pack / home / orbit. */
+  /** TV position-bar follow. Null = pack / clubhouse / orbit. */
   followId: null as string | null,
   followOk: false,
   followX: 0,
