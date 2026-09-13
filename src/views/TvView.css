@@ -3,7 +3,7 @@
   flex: 1;
   min-height: 0;
   width: 100%;
-  background: #1a1c14;
+  background: #87b8e8;
   margin: 0;
   padding: 0;
   overflow: hidden;
@@ -46,8 +46,9 @@
   letter-spacing: 0.18em;
   font-size: 11px;
   text-transform: uppercase;
-  background: #c8102e;
-  color: #fff;
+  background: #1a2c26;
+  color: #e8d9a8;
+  border: 1px solid rgba(212, 196, 138, 0.55);
   padding: 3px 8px;
   width: fit-content;
 }
@@ -57,8 +58,10 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  background: rgba(8, 10, 14, 0.72);
+  background: rgba(15, 26, 22, 0.82);
+  border: 1px solid rgba(212, 196, 138, 0.28);
   padding: 3px 8px;
+  color: #f0f7f2;
 }
 
 .tv-thirds__shot {
@@ -68,7 +71,8 @@
   font-size: 10px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  background: rgba(8, 10, 14, 0.65);
+  background: rgba(15, 26, 22, 0.78);
+  border: 1px solid rgba(212, 196, 138, 0.32);
   padding: 4px 8px;
   color: #e8d9a8;
 }
@@ -112,8 +116,9 @@
   font-size: 11px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #f4e3a8;
-  background: rgba(8, 10, 14, 0.72);
+  color: #e8d9a8;
+  background: rgba(15, 26, 22, 0.82);
+  border: 1px solid rgba(212, 196, 138, 0.28);
   padding: 3px 8px;
   width: fit-content;
 }
@@ -193,13 +198,23 @@
   font-size: 10px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  background: #c8102e;
+  background: #2a4b38;
+  border: 1px solid rgba(212, 196, 138, 0.45);
+  color: #e8d9a8;
   padding: 3px 10px;
   font-weight: 800;
 }
 
+.tv-thirds__live.is-on {
+  background: rgba(184, 50, 72, 0.88);
+  border-color: rgba(212, 90, 106, 0.55);
+  color: #fff;
+}
+
 .tv-thirds__live.is-demo {
-  background: #3a4a38;
+  background: rgba(26, 44, 38, 0.92);
+  border-color: rgba(212, 196, 138, 0.4);
+  color: #e8d9a8;
 }
 
 .tv-view .race-hud {
@@ -229,7 +244,8 @@
   font-size: 11px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  background: rgba(8, 10, 14, 0.62);
+  background: rgba(15, 26, 22, 0.78);
+  border: 1px solid rgba(212, 196, 138, 0.28);
   padding: 6px 10px;
   color: #e8d9a8;
   white-space: nowrap;

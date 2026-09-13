@@ -19,6 +19,23 @@
   min-width: 0;
 }
 
+.nav__wordmark {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  min-width: 0;
+}
+
+.nav__meet {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold-bright);
+  line-height: 1;
+  white-space: nowrap;
+}
+
 /* Match 2D DRBY. wordmark: heavy bold italic sans + soft period */
 .nav__logo {
   font-family: var(--font-logo);
@@ -136,6 +153,11 @@
 @media (min-width: 900px) {
   .nav {
     padding: 0.75rem 1.6rem;
+  }
+
+  .nav__meet {
+    font-size: 0.62rem;
+    letter-spacing: 0.18em;
   }
 
   .nav__tabs {

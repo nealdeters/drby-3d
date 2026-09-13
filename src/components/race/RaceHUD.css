@@ -25,10 +25,10 @@
   padding: 0.45rem 0.7rem;
   background: linear-gradient(
     165deg,
-    rgba(18, 32, 42, 0.82),
-    rgba(12, 24, 34, 0.78)
+    rgba(26, 44, 38, 0.9),
+    rgba(15, 26, 22, 0.86)
   );
-  border: 1px solid rgba(201, 162, 39, 0.38);
+  border: 1px solid rgba(212, 196, 138, 0.4);
   border-radius: var(--radius-sm);
   backdrop-filter: blur(12px);
   color: var(--cream);
@@ -52,9 +52,6 @@
 }
 
 .race-hud__top .badge {
-  background: rgba(184, 50, 72, 0.22);
-  border-color: rgba(201, 100, 110, 0.4);
-  color: #f0b4bc;
   font-size: 0.62rem;
   padding: 0.15rem 0.45rem;
 }
@@ -91,10 +88,10 @@
   overflow: hidden;
   background: linear-gradient(
     165deg,
-    rgba(18, 32, 42, 0.88),
-    rgba(12, 24, 34, 0.84)
+    rgba(26, 44, 38, 0.92),
+    rgba(15, 26, 22, 0.88)
   );
-  border: 1px solid rgba(201, 162, 39, 0.35);
+  border: 1px solid rgba(212, 196, 138, 0.38);
   border-radius: var(--radius);
   backdrop-filter: blur(12px);
   color: var(--cream);
@@ -115,8 +112,8 @@
 }
 
 .race-hud__side .badge {
-  background: rgba(201, 162, 39, 0.16);
-  border-color: rgba(201, 162, 39, 0.4);
+  background: rgba(212, 196, 138, 0.16);
+  border-color: rgba(212, 196, 138, 0.4);
   color: var(--gold-bright);
 }
 
@@ -168,10 +165,10 @@
   padding: 0.4rem 0.55rem 0.45rem;
   background: linear-gradient(
     165deg,
-    rgba(18, 32, 42, 0.86),
-    rgba(12, 24, 34, 0.82)
+    rgba(26, 44, 38, 0.9),
+    rgba(15, 26, 22, 0.86)
   );
-  border: 1px solid rgba(201, 162, 39, 0.32);
+  border: 1px solid rgba(212, 196, 138, 0.36);
   border-radius: var(--radius-sm);
   backdrop-filter: blur(12px);
   color: var(--cream);
@@ -199,8 +196,8 @@
 }
 
 .race-hud__order-label .badge {
-  background: rgba(201, 162, 39, 0.16);
-  border-color: rgba(201, 162, 39, 0.4);
+  background: rgba(212, 196, 138, 0.16);
+  border-color: rgba(212, 196, 138, 0.4);
   color: var(--gold-bright);
   font-size: 0.6rem;
   padding: 0.12rem 0.4rem;
@@ -319,11 +316,11 @@
 .race-hud__order-row.is-finished,
 .race-hud__row.is-finished {
   opacity: 0.92;
-  border-color: rgba(201, 162, 39, 0.45);
+  border-color: rgba(212, 196, 138, 0.45);
 }
 
 .race-hud__order-row.is-finished {
-  background: rgba(201, 162, 39, 0.12);
+  background: rgba(212, 196, 138, 0.12);
 }
 
 .race-hud__row.is-finished strong {
@@ -337,8 +334,8 @@
 
 .race-hud__order-row.is-selectable:hover,
 .race-hud__row.is-selectable:hover {
-  background: rgba(201, 162, 39, 0.14);
-  border-color: rgba(201, 162, 39, 0.45);
+  background: rgba(212, 196, 138, 0.14);
+  border-color: rgba(212, 196, 138, 0.45);
 }
 
 .race-hud__row.is-selectable {
@@ -349,7 +346,7 @@
 
 .race-hud__order-row.is-tracked,
 .race-hud__row.is-tracked {
-  background: rgba(201, 162, 39, 0.22);
-  border-color: rgba(201, 162, 39, 0.7);
-  box-shadow: 0 0 0 1px rgba(201, 162, 39, 0.35);
+  background: rgba(212, 196, 138, 0.22);
+  border-color: rgba(212, 196, 138, 0.7);
+  box-shadow: 0 0 0 1px rgba(212, 196, 138, 0.35);
 }

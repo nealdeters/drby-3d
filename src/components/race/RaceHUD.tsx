@@ -216,7 +216,7 @@ export function RaceHUD({
         ? 'At gate'
         : mode === 'live'
           ? 'Standby'
-          : 'Fake pace'
+          : 'Demo pace'
 
   return (
     <div className="race-hud">
@@ -225,7 +225,7 @@ export function RaceHUD({
           <span className="badge" data-mode={mode}>
             {modeLabel}
           </span>
-          <h2>{live?.name ?? 'DRBY Race'}</h2>
+          <h2>{live?.name ?? 'Race day'}</h2>
           <p className="muted">
             {trackName ?? 'Track'}
             {` · ${laps} lap${laps === 1 ? '' : 's'}`}

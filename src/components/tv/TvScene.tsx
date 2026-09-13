@@ -29,36 +29,36 @@ export const TvScene = memo(function TvScene({
 }: TvSceneProps) {
   return (
     <Canvas shadows dpr={[1, 1.75]} gl={{ antialias: true, alpha: false }}>
-      <color attach="background" args={['#9ec4e6']} />
-      <fog attach="fog" args={['#c5d8ea', 110, 240]} />
+      <color attach="background" args={['#87b8e8']} />
+      <fog attach="fog" args={['#c8dcf0', 140, 320]} />
       <BroadcastCamera />
       <Sky
         distance={450000}
-        sunPosition={[70, 28, 50]}
-        inclination={0.47}
-        azimuth={0.18}
-        mieCoefficient={0.005}
-        mieDirectionalG={0.82}
-        rayleigh={0.55}
-        turbidity={3.5}
+        sunPosition={[80, 35, 40]}
+        inclination={0.48}
+        azimuth={0.22}
+        mieCoefficient={0.004}
+        mieDirectionalG={0.8}
+        rayleigh={0.65}
+        turbidity={4}
       />
-      <ambientLight intensity={0.5} color="#fff1dc" />
-      <hemisphereLight args={['#b7d2ef', '#6e8a48', 0.42]} />
+      <ambientLight intensity={0.55} color="#fff4e0" />
+      <hemisphereLight args={['#b8d4f5', '#7a9a4a', 0.45]} />
       <directionalLight
         castShadow
-        position={[24, 36, 22]}
-        intensity={1.65}
-        color="#ffe4b0"
+        position={[28, 42, 18]}
+        intensity={1.55}
+        color="#ffe8b8"
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
-        shadow-camera-far={120}
-        shadow-camera-left={-50}
-        shadow-camera-right={50}
-        shadow-camera-top={50}
-        shadow-camera-bottom={-50}
-        shadow-bias={-0.00025}
+        shadow-camera-far={140}
+        shadow-camera-left={-55}
+        shadow-camera-right={55}
+        shadow-camera-top={55}
+        shadow-camera-bottom={-55}
+        shadow-bias={-0.0002}
       />
-      <directionalLight position={[-18, 14, -8]} intensity={0.28} color="#9ab6d8" />
+      <directionalLight position={[-20, 18, -12]} intensity={0.35} color="#a8c8f0" />
       <Track key={surface} surface={surface} />
       <TvField
         horses={horses}
@@ -69,7 +69,7 @@ export const TvScene = memo(function TvScene({
         laneRef={laneRef}
         raceId={raceId}
       />
-      <Environment preset="sunset" environmentIntensity={0.28} />
+      <Environment preset="sunset" environmentIntensity={0.35} />
     </Canvas>
   )
 })

@@ -31,13 +31,17 @@ export function TvLowerThirds({ isRacing, live, trackName }: Props) {
   return (
     <div className="tv-thirds">
       <div className="tv-thirds__bug">
-        <span className="tv-thirds__net">DRBY TV</span>
-        <span className="tv-thirds__meet">{trackName ?? 'Churchill dirt'}</span>
+        <span className="tv-thirds__net">DRBY</span>
+        <span className="tv-thirds__meet">{trackName ?? 'Churchill oval'}</span>
         <span className="tv-thirds__lap">
           Lap {Math.max(1, leaderLap)} / {trackLaps > 0 ? trackLaps : 1}
         </span>
       </div>
-      <div className={live && isRacing ? 'tv-thirds__live' : 'tv-thirds__live is-demo'}>
+      <div
+        className={
+          live && isRacing ? 'tv-thirds__live is-on' : live ? 'tv-thirds__live' : 'tv-thirds__live is-demo'
+        }
+      >
         {live && isRacing ? 'Live' : live ? 'Hold' : 'Demo'}
       </div>
       <div className="tv-thirds__shot">{chip}</div>

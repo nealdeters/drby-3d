@@ -104,7 +104,7 @@ export function StandingsView() {
     <div className="view-scroll">
       <header className="view-hero">
         <div>
-          <span className="view-kicker">Leaderboard</span>
+          <span className="view-kicker">Official program</span>
           <h1>Standings</h1>
           <p>
             Points, wins, and starts across{' '}

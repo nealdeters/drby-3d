@@ -40,8 +40,11 @@ export function NavBar({ view, onNavigate, menuOpen, onToggleMenu, onCloseMenu }
         tabIndex={0}
         aria-label="DRBY — go to race"
       >
-        <span className="nav__logo" aria-hidden="true">
-          DRBY<span className="nav__logo-dot">.</span>
+        <span className="nav__wordmark">
+          <span className="nav__logo" aria-hidden="true">
+            DRBY<span className="nav__logo-dot">.</span>
+          </span>
+          <span className="nav__meet">Churchill · race day</span>
         </span>
       </div>
 

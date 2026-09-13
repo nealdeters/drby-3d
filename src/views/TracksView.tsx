@@ -14,7 +14,7 @@ export function TracksView() {
     <div className="view-scroll">
       <header className="view-hero">
         <div>
-          <span className="view-kicker">Venues</span>
+          <span className="view-kicker">Official program</span>
           <h1>Tracks</h1>
           <p>
             Dirt, asphalt, and grass courses on the DRBY map — surfaces, distances, and local

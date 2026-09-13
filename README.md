@@ -31,7 +31,7 @@ Mobile: hamburger drawer. Desktop: top tabs.
 
 ## Design
 
-Affluent race-day program aesthetic — cream / navy / gold, manicured turf infield, sandy dirt, Twin Spires silhouette — dusk UI; wood-tier grandstand set back from the outer rail.
+Affluent race-day program — cream / navy / gold toteboard chrome on Race, TV, HUD, and the schedule/standings/seasons/tracks pages. Same Churchill oval, silks, and dusk UI (not a separate broadcast skin). Twin Spires / wood grandstand / dirt-turf stay; TV is the booth camera on that meet.
 
 ## Live backend
 

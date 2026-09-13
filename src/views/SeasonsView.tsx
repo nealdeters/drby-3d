@@ -75,10 +75,12 @@ export function SeasonsView() {
 
   const isCurrent =
     !!selectedKey &&
+    !selectedCompleted &&
     (selectedKey === `s-current-${seasonNumber}` ||
       selectedKey === `season-${seasonNumber}` ||
-      selectedKey === String(seasonNumber)) &&
-    !selectedCompleted
+      selectedKey === `s${seasonNumber}` ||
+      selectedKey === String(seasonNumber) ||
+      seasons.some((s) => s.status === 'active' && seasonKey(s, s.name) === selectedKey))
 
   const selectedRows = useMemo(() => {
     if (selectedCompleted) {
@@ -124,9 +126,9 @@ export function SeasonsView() {
     <div className="view-scroll">
       <header className="view-hero">
         <div>
-          <span className="view-kicker">Campaigns</span>
+          <span className="view-kicker">Official program</span>
           <h1>Seasons</h1>
-          <p>Past, present, and upcoming DRBY circuits — open a meet for final places and race results.</p>
+          <p>Past, present, and upcoming DRBY meets — open a card for places and race results.</p>
         </div>
         <span className="badge" data-mode={mode}>
           {mode === 'live' ? 'Live API' : 'Demo'}
@@ -198,7 +200,13 @@ export function SeasonsView() {
 
             <h3 style={{ marginBottom: '0.5rem' }}>Championship table</h3>
             {selectedRows.length === 0 ? (
-              <p className="muted">No standings stored for this season.</p>
+              <p className="muted">
+                {isCurrent
+                  ? 'No standings posted for this meet yet.'
+                  : selectedCompleted
+                    ? 'No standings stored for this season.'
+                    : 'This meet has not been run — no table yet.'}
+              </p>
             ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table className="table">
