@@ -29,6 +29,11 @@ function followPose() {
   }
 }
 
+/** Portrait booth: narrower hFOV, so dolly clubhouse back a little. */
+function clubhousePhone() {
+  return typeof window !== 'undefined' && window.innerWidth < 720
+}
+
 /** Clubhouse is the primary — load / Hold / double-tap tracks with the field. */
 function homePose() {
   const px = tvBridge.packX
@@ -42,10 +47,16 @@ function homePose() {
   // Right of travel = inside rail on a CCW oval (same side as the rail shot).
   const rx = fz
   const rz = -fx
+  const phone = clubhousePhone()
+  const rail = phone ? 11 : 9
+  const back = phone ? -5.2 : -4
+  const y = phone ? 5.8 : 4.8
+  const ahead = phone ? 3.4 : 3
+  const fov = phone ? 42 : 34
   return {
-    pos: new THREE.Vector3(px + rx * 9 + fx * -4, 4.8, pz + rz * 9 + fz * -4),
-    look: new THREE.Vector3(px + fx * 3, py + 0.5, pz + fz * 3),
-    fov: 34,
+    pos: new THREE.Vector3(px + rx * rail + fx * back, y, pz + rz * rail + fz * back),
+    look: new THREE.Vector3(px + fx * ahead, py + 0.5, pz + fz * ahead),
+    fov,
   }
 }
 
