@@ -6,6 +6,7 @@ import type { Horse as HorseData } from '../../data/fakeSeason'
 import type { HorseSimState } from '../race/trackMath'
 import { trackPoint, trackTangent } from '../race/trackMath'
 import { GATE_POSE, sampleGallop, wrap01, type GallopSample } from '../race/gallop'
+import { ensureGallopAttributes } from './gallopTag'
 
 const HORSE_URL = '/tv/models/riding-horse.glb'
 
@@ -32,186 +33,7 @@ type JockeyRefs = {
   thighR: THREE.Group
 }
 
-const _rootInv = new THREE.Matrix4()
-const _meshInv = new THREE.Matrix4()
-const _v = new THREE.Vector3()
-const _hip = new THREE.Vector3()
-const _hoof = new THREE.Vector3()
-const _tmp = new THREE.Vector3()
-
-/** Tag hide vertices into FL/FR/HL/HR plus neck/head/tail once on the shared GLB. */
-function ensureGallopAttributes(root: THREE.Object3D) {
-  root.updateMatrixWorld(true)
-  _rootInv.copy(root.matrixWorld).invert()
-
-  type Hit = { mesh: THREE.Mesh; i: number; x: number; y: number; z: number }
-  const hits: Hit[] = []
-
-  root.traverse((obj) => {
-    const mesh = obj as THREE.Mesh
-    if (!mesh.isMesh || !mesh.geometry) return
-    const mat = mesh.material as THREE.MeshStandardMaterial
-    const name = `${mat?.name ?? ''} ${mesh.name ?? ''}`
-    if (!/hide/i.test(name)) return
-    const pos = mesh.geometry.attributes.position
-    if (!pos) return
-    for (let i = 0; i < pos.count; i++) {
-      _v.fromBufferAttribute(pos, i).applyMatrix4(mesh.matrixWorld).applyMatrix4(_rootInv)
-      hits.push({ mesh, i, x: _v.x, y: _v.y, z: _v.z })
-    }
-  })
-  if (!hits.length) return
-
-  let minY = Infinity
-  let maxY = -Infinity
-  let minZ = Infinity
-  let maxZ = -Infinity
-  for (const h of hits) {
-    if (h.y < minY) minY = h.y
-    if (h.y > maxY) maxY = h.y
-    if (h.z < minZ) minZ = h.z
-    if (h.z > maxZ) maxZ = h.z
-  }
-  const yCut = minY + (maxY - minY) * 0.5
-  const zFore = minZ + (maxZ - minZ) * 0.58
-  const zHind = minZ + (maxZ - minZ) * 0.42
-  const xAbs = 0.05
-  const ySpan = maxY - minY
-  const zSpan = maxZ - minZ
-
-  const byGeom = new Map<
-    THREE.BufferGeometry,
-    { id: Float32Array; pivot: Float32Array; along: Float32Array; part: Float32Array; partPivot: Float32Array }
-  >()
-  const hips = {
-    1: { x: 0, y: 0, z: 0, n: 0 },
-    2: { x: 0, y: 0, z: 0, n: 0 },
-    3: { x: 0, y: 0, z: 0, n: 0 },
-    4: { x: 0, y: 0, z: 0, n: 0 },
-  }
-  const hoofs = {
-    1: { x: 0, y: 0, z: 0, n: 0, minY: Infinity },
-    2: { x: 0, y: 0, z: 0, n: 0, minY: Infinity },
-    3: { x: 0, y: 0, z: 0, n: 0, minY: Infinity },
-    4: { x: 0, y: 0, z: 0, n: 0, minY: Infinity },
-  }
-  const parts = {
-    5: { x: 0, y: 0, z: 0, n: 0 },
-    6: { x: 0, y: 0, z: 0, n: 0 },
-    7: { x: 0, y: 0, z: 0, n: 0 },
-  }
-
-  const tagged: { hit: Hit; id: number; part: number }[] = []
-  for (const h of hits) {
-    let id = 0
-    if (h.y <= yCut && Math.abs(h.x) >= xAbs) {
-      if (h.z >= zFore) id = h.x < 0 ? 1 : 2
-      else if (h.z <= zHind) id = h.x < 0 ? 3 : 4
-    }
-    let part = id
-    if (id === 0) {
-      if (h.z >= minZ + zSpan * 0.8 && h.y >= minY + ySpan * 0.35) part = 6
-      else if (h.z >= minZ + zSpan * 0.58 && h.y >= minY + ySpan * 0.48) part = 5
-      else if (h.z <= minZ + zSpan * 0.16) part = 7
-    }
-    tagged.push({ hit: h, id, part })
-    if (id === 0) {
-      if (part === 5 || part === 6 || part === 7) {
-        const bag = parts[part]
-        bag.x += h.x
-        bag.y += h.y
-        bag.z += h.z
-        bag.n++
-      }
-      continue
-    }
-    const hip = hips[id as 1 | 2 | 3 | 4]
-    const hoof = hoofs[id as 1 | 2 | 3 | 4]
-    if (h.y > yCut - (maxY - minY) * 0.12) {
-      hip.x += h.x
-      hip.y += h.y
-      hip.z += h.z
-      hip.n++
-    }
-    if (h.y < hoof.minY + 0.08) {
-      if (h.y < hoof.minY) hoof.minY = h.y
-      hoof.x += h.x
-      hoof.y += h.y
-      hoof.z += h.z
-      hoof.n++
-    }
-  }
-
-  for (const id of [1, 2, 3, 4] as const) {
-    if (hips[id].n) {
-      hips[id].x /= hips[id].n
-      hips[id].y /= hips[id].n
-      hips[id].z /= hips[id].n
-    }
-    if (hoofs[id].n) {
-      hoofs[id].x /= hoofs[id].n
-      hoofs[id].y /= hoofs[id].n
-      hoofs[id].z /= hoofs[id].n
-    }
-  }
-  for (const id of [5, 6, 7] as const) {
-    if (parts[id].n) {
-      parts[id].x /= parts[id].n
-      parts[id].y /= parts[id].n
-      parts[id].z /= parts[id].n
-    }
-  }
-
-  for (const { hit, id, part } of tagged) {
-    const geom = hit.mesh.geometry
-    let bag = byGeom.get(geom)
-    if (!bag) {
-      const n = geom.attributes.position.count
-      bag = {
-        id: new Float32Array(n),
-        pivot: new Float32Array(n * 3),
-        along: new Float32Array(n),
-        part: new Float32Array(n),
-        partPivot: new Float32Array(n * 3),
-      }
-      byGeom.set(geom, bag)
-    }
-    bag.id[hit.i] = id
-    bag.part[hit.i] = part
-    if (id !== 0) {
-      const hip = hips[id as 1 | 2 | 3 | 4]
-      const hoof = hoofs[id as 1 | 2 | 3 | 4]
-      _hip.set(hip.x, hip.y, hip.z)
-      _hoof.set(hoof.x, hoof.y, hoof.z)
-      _meshInv.copy(hit.mesh.matrixWorld).invert()
-      _tmp.copy(_hip).applyMatrix4(root.matrixWorld).applyMatrix4(_meshInv)
-      bag.pivot[hit.i * 3] = _tmp.x
-      bag.pivot[hit.i * 3 + 1] = _tmp.y
-      bag.pivot[hit.i * 3 + 2] = _tmp.z
-      const span = Math.max(0.001, hip.y - (hoof.n ? hoof.y : minY))
-      bag.along[hit.i] = THREE.MathUtils.clamp((hip.y - hit.y) / span, 0, 1)
-    } else if (part === 5 || part === 6 || part === 7) {
-      const pv = parts[part]
-      _meshInv.copy(hit.mesh.matrixWorld).invert()
-      _tmp.set(pv.x, pv.y, pv.z).applyMatrix4(root.matrixWorld).applyMatrix4(_meshInv)
-      bag.partPivot[hit.i * 3] = _tmp.x
-      bag.partPivot[hit.i * 3 + 1] = _tmp.y
-      bag.partPivot[hit.i * 3 + 2] = _tmp.z
-    }
-  }
-
-  for (const [geom, bag] of byGeom) {
-    if (geom.userData.tvGallop) continue
-    geom.setAttribute('legId', new THREE.BufferAttribute(bag.id, 1))
-    geom.setAttribute('legPivot', new THREE.BufferAttribute(bag.pivot, 3))
-    geom.setAttribute('legAlong', new THREE.BufferAttribute(bag.along, 1))
-    geom.setAttribute('partId', new THREE.BufferAttribute(bag.part, 1))
-    geom.setAttribute('partPivot', new THREE.BufferAttribute(bag.partPivot, 3))
-    geom.userData.tvGallop = true
-  }
-}
-
-function bindGallopMaterials(root: THREE.Object3D): GallopRig {
+export function bindGallopMaterials(root: THREE.Object3D): GallopRig {
   const existing = root.userData.gallop as GallopRig | undefined
   if (existing) return existing
   const rig: GallopRig = {
@@ -228,7 +50,7 @@ function bindGallopMaterials(root: THREE.Object3D): GallopRig {
       const mat = m as THREE.MeshStandardMaterial
       if (!mat || mat.userData.tvGallopShader) continue
       mat.userData.tvGallopShader = true
-      mat.customProgramCacheKey = () => 'tv-gallop-v2'
+      mat.customProgramCacheKey = () => 'tv-gallop-v5'
       mat.onBeforeCompile = (shader) => {
         shader.uniforms.uLegSwing = { value: rig.swing }
         shader.uniforms.uLegKnee = { value: rig.knee }
@@ -241,6 +63,7 @@ function bindGallopMaterials(root: THREE.Object3D): GallopRig {
 attribute float legId;
 attribute vec3 legPivot;
 attribute float legAlong;
+attribute vec3 legKnee;
 attribute float partId;
 attribute vec3 partPivot;
 uniform vec4 uLegSwing;
@@ -276,9 +99,11 @@ if (legId > 0.5) {
   else if (legId < 3.5) { swing = uLegSwing.z; knee = uLegKnee.z; }
   else { swing = uLegSwing.w; knee = uLegKnee.w; }
   vec3 p = transformed - legPivot;
+  // Knee is tagged at KNEE_ALONG along hip→hoof so the hinge stays on the bone.
+  vec3 k = legKnee - legPivot;
+  tvRx(k, swing);
   tvRx(p, swing);
   if (legAlong > 0.42) {
-    vec3 k = vec3(0.0, -0.38, 0.0);
     vec3 q = p - k;
     tvRx(q, knee);
     p = q + k;
@@ -337,7 +162,7 @@ if (legId > 0.5) {
   return rig
 }
 
-function cloneHorse(scene: THREE.Object3D, coatHex: string) {
+export function cloneHorse(scene: THREE.Object3D, coatHex: string) {
   ensureGallopAttributes(scene)
   const root = scene.clone(true)
   const coat = new THREE.Color(coatHex)
@@ -371,7 +196,7 @@ function plateLuminance(hex: string): number {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b
 }
 
-function applyGallop(rig: GallopRig | undefined, pose: GallopSample | null) {
+export function applyGallop(rig: GallopRig | undefined, pose: GallopSample | null) {
   if (!rig) return
   if (!pose) {
     rig.swing.set(0, 0, 0, 0)

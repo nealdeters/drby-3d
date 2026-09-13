@@ -3,11 +3,14 @@
  *
  * One cycle is four footfalls then a real suspension:
  *   trailing hind (HR) → lead hind (HL) → trailing fore (FR) → lead fore (FL) → airborne.
- * Stance is short; the gathered beat (legs under) and the extended airborne beat
- * drive body / neck opposition and the jockey's two-point post.
  *
  * Hip swing: +X rotation sends a downward limb toward -Z (aft) when the horse
  * faces +Z, so +swing is the stance push and −swing is the forward reach.
+ *
+ * Carousel rule: a racing gallop almost never holds two long vertical cannons.
+ * Flight hips do not lerp through the standing pose. When a hip must cross 0,
+ * the knee is already folded ~90°. Only a supporting stance leg may read "down",
+ * and even that keeps a residual joint flex.
  */
 
 export type LegId = 'fl' | 'fr' | 'hl' | 'hr'
@@ -64,9 +67,59 @@ const HL_T = 0.16
 const FR_T = 0.31
 const FL_T = 0.47
 
+type Key = { t: number; swing: number; knee: number }
+
+/**
+ * Keys are 0..1 from that leg's stance start.
+ * Flight hips stay clearly aft, then snap forward while the joint is folded —
+ * they do not spend the recovery hanging at swing ≈ 0.
+ */
+const HIND_KEYS: Key[] = [
+  { t: 0.0, swing: -0.62, knee: 0.32 },
+  { t: 0.1, swing: 0.12, knee: 0.48 },
+  { t: 0.2, swing: 0.98, knee: 0.58 },
+  { t: 0.34, swing: 0.72, knee: 1.52 },
+  { t: 0.44, swing: 0.42, knee: 1.62 },
+  { t: 0.52, swing: -0.42, knee: 1.58 },
+  { t: 0.68, swing: -0.88, knee: 1.05 },
+  { t: 0.86, swing: -0.78, knee: 0.42 },
+  { t: 1.0, swing: -0.62, knee: 0.32 },
+]
+
+const FORE_KEYS: Key[] = [
+  { t: 0.0, swing: -0.55, knee: 0.28 },
+  { t: 0.1, swing: 0.1, knee: 0.4 },
+  { t: 0.2, swing: 0.82, knee: 0.5 },
+  { t: 0.34, swing: 0.92, knee: 1.48 },
+  { t: 0.46, swing: 0.48, knee: 1.6 },
+  { t: 0.54, swing: -0.38, knee: 1.42 },
+  { t: 0.72, swing: -0.78, knee: 0.72 },
+  { t: 0.9, swing: -0.68, knee: 0.34 },
+  { t: 1.0, swing: -0.55, knee: 0.28 },
+]
+
 function smooth01(u: number): number {
   const x = u < 0 ? 0 : u > 1 ? 1 : u
   return x * x * (3 - 2 * x)
+}
+
+function sampleKeys(keys: Key[], d: number): { swing: number; knee: number } {
+  const p = wrap01(d)
+  let i = 0
+  while (i < keys.length - 2 && keys[i + 1].t <= p) i++
+  const a = keys[i]
+  const b = keys[i + 1]
+  const span = b.t - a.t
+  const u = span <= 1e-6 ? 1 : smooth01((p - a.t) / span)
+  return {
+    swing: a.swing + (b.swing - a.swing) * u,
+    knee: a.knee + (b.knee - a.knee) * u,
+  }
+}
+
+function limb(phase: number, stanceStart: number, hind: boolean): { swing: number; knee: number } {
+  const d = wrap01(phase - stanceStart)
+  return sampleKeys(hind ? HIND_KEYS : FORE_KEYS, d)
 }
 
 /** 1 inside [start, start+dur) on the unit circle, faded at the lips. */
@@ -87,35 +140,14 @@ function pulse(phase: number, center: number, half: number): number {
   return Math.max(0, 1 - d / half)
 }
 
-function limb(
-  phase: number,
-  stanceStart: number,
-  hind: boolean,
-): { swing: number; knee: number } {
-  const reach = hind ? 0.7 : 0.58
-  const push = hind ? 0.86 : 0.7
-  const kneeStance = hind ? 0.2 : 0.14
-  const kneeSwing = hind ? 1.12 : 1.22
+/** A carousel pole: long cannon hanging under a near-vertical hip. */
+export function isCarouselPole(swing: number, knee: number): boolean {
+  return Math.abs(swing) < 0.28 && knee < 0.7
+}
 
-  const p = wrap01(phase)
-  const a = wrap01(stanceStart)
-  let d = p - a
-  if (d < 0) d += 1
-
-  if (d < STANCE) {
-    const u = smooth01(d / STANCE)
-    return {
-      swing: -reach + (push + reach) * u,
-      knee: kneeStance + u * 0.16,
-    }
-  }
-  const u = smooth01((d - STANCE) / (1 - STANCE))
-  const tuck = Math.sin(u * Math.PI)
-  const swing = push + (-reach - push) * u
-  return {
-    swing: swing * (1 - 0.32 * tuck),
-    knee: kneeStance + tuck * kneeSwing,
-  }
+export function countCarouselPoles(pose: GallopSample): number {
+  const ids: LegId[] = ['fl', 'fr', 'hl', 'hr']
+  return ids.filter((id) => isCarouselPole(pose.swing[id], pose.knee[id])).length
 }
 
 export function sampleGallop(phase: number): GallopSample {
