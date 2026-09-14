@@ -32,7 +32,7 @@ type Options = {
   seedRacers?: LiveRacer[]
   /** Scheduled start ms — used to decide mid-race snapshot vs clean early attach */
   raceStartTime?: number | null
-  /** Fired when Ably delivers finished so season can advance immediately */
+  /** Fired when Ably delivers finished (season marks complete; UI holds the field 30s) */
   onRaceFinished?: (raceId: string, resultIds: string[]) => void
 }
 

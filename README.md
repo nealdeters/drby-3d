@@ -48,3 +48,5 @@ Same API as https://drby-live.netlify.app + drby_scheduler.
 Netlify (cheerful-sorbet-14faed): copy VITE_ABLY_API_KEY and VITE_API_KEY from drby-live site env into this site, optionally set VITE_API_BASE=https://drby-live.netlify.app, then redeploy. Do not invent or commit secrets.
 
 Without keys the HUD shows Demo (fakeSeason + local pack sim). With keys + healthy API it shows Live and drives horses from Ably race-update progressMap/racers.
+
+After a live finish, Race (`#/`) and TV (`#/tv`) keep that field on the wire for 30 seconds and show an official-order board (auto-clears). The next card does not gate-warp the pack until the hold ends.

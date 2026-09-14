@@ -26,6 +26,8 @@ type Props = {
   onSelectHorse?: (id: string) => void
   /** Scheduled / locked lap count for this card (not compressed display). */
   trackLaps?: number
+  /** Photo-finish / official order — field is parked at the wire. */
+  official?: boolean
 }
 
 type OrderRow = {
@@ -77,6 +79,7 @@ export function RaceHUD({
   selectedHorseId = null,
   onSelectHorse,
   trackLaps = 1,
+  official = false,
 }: Props) {
   const live =
     currentRace ??
@@ -270,7 +273,7 @@ export function RaceHUD({
       {/* Always-visible running order (mobile top strip + desktop) */}
       <div className="race-hud__order panel" aria-label="Running order">
         <div className="race-hud__order-label">
-          <span className="muted">{isRacing ? 'Running order' : 'Field'}</span>
+          <span className="muted">{official ? 'Official order' : isRacing ? 'Running order' : 'Field'}</span>
           <span className="badge" data-mode={mode}>
             {paceLabel}
           </span>
@@ -315,7 +318,7 @@ export function RaceHUD({
 
       <aside className="race-hud__side panel">
         <div className="panel-header">
-          <h2>Field</h2>
+          <h2>{official ? 'Official' : 'Field'}</h2>
           <span className="badge" data-mode={mode}>
             {paceLabel}
           </span>

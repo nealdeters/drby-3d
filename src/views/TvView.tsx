@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { RaceHUD } from '../components/race/RaceHUD'
+import { ResultsBoard } from '../components/race/ResultsBoard'
 import { tvBridge } from '../components/tv/tvBridge'
 import { TvLowerThirds } from '../components/tv/TvLowerThirds'
 import { TvScene } from '../components/tv/TvScene'
@@ -12,7 +13,8 @@ export function TvView() {
   const season = useLiveData()
   const feed = season.raceFeed
   const [followId, setFollowId] = useState<string | null>(null)
-  const raceKey = season.currentRace?.id ?? null
+  const shownRace = season.displayRace ?? season.currentRace
+  const raceKey = shownRace?.id ?? null
 
   useEffect(() => {
     tvBridge.followId = null
@@ -33,11 +35,11 @@ export function TvView() {
     setFollowId(next)
   }, [])
   const seedRacers = useMemo(() => {
-    if (!season.currentRace || !season.roster.length) return season.roster
-    const ids = new Set(season.currentRace.racerIds)
+    if (!shownRace || !season.roster.length) return season.roster
+    const ids = new Set(shownRace.racerIds)
     const field = season.roster.filter((r) => ids.has(r.id))
     return field.length ? field : season.roster
-  }, [season.currentRace, season.roster])
+  }, [shownRace, season.roster])
 
   const horses = useMemo(() => {
     if (season.mode === 'live' && (feed.racers.length || seedRacers.length)) {
@@ -48,6 +50,7 @@ export function TvView() {
   }, [season.mode, season.horses, feed.racers, seedRacers])
 
   const currentEntry =
+    season.races.find((r) => r.id === shownRace?.id) ??
     season.races.find((r) => r.id === season.currentRace?.id) ??
     season.races.find((r) => r.status === 'live') ??
     null
@@ -87,10 +90,11 @@ export function TvView() {
   }, [season.schedule, season.races, season.currentRace, season.mode, currentEntry, feed.isRacing])
 
   const trackName =
+    shownRace?.track?.name ??
     season.currentRace?.track?.name ??
     (currentEntry ? season.trackById(currentEntry.trackId)?.name : undefined)
 
-  const trackLaps = season.currentRace?.track?.laps ?? 1
+  const trackLaps = shownRace?.track?.laps ?? season.currentRace?.track?.laps ?? 1
 
   const trackSurface = useMemo(() => {
     const normalize = (raw: unknown): 'asphalt' | 'turf' | 'dirt' | null => {
@@ -103,11 +107,15 @@ export function TvView() {
       return null
     }
 
-    const trackId = season.currentRace?.track?.id ?? currentEntry?.trackId ?? null
+    const trackId = shownRace?.track?.id ?? season.currentRace?.track?.id ?? currentEntry?.trackId ?? null
 
     const candidates: unknown[] = [
+      shownRace?.track?.surface,
       season.currentRace?.track?.surface,
       trackId ? season.liveTracks.find((t) => t.id === trackId)?.surface : undefined,
+      shownRace?.id
+        ? season.schedule.find((e) => e.id === shownRace?.id)?.track?.surface
+        : undefined,
       season.currentRace?.id
         ? season.schedule.find((e) => e.id === season.currentRace?.id)?.track?.surface
         : undefined,
@@ -122,6 +130,7 @@ export function TvView() {
     }
 
     const nameHint = (
+      shownRace?.track?.name ??
       season.currentRace?.track?.name ??
       (trackId ? season.liveTracks.find((t) => t.id === trackId)?.name : undefined) ??
       (trackId ? season.trackById(trackId)?.name : undefined) ??
@@ -141,7 +150,7 @@ export function TvView() {
     }
 
     return 'dirt' as const
-  }, [season.currentRace, season.liveTracks, season.schedule, season.trackById, currentEntry])
+  }, [shownRace, season.currentRace, season.liveTracks, season.schedule, season.trackById, currentEntry])
 
   const liveFeed = season.mode === 'live'
 
@@ -156,13 +165,14 @@ export function TvView() {
           surface={trackSurface}
           progressRef={feed.progressRef}
           laneRef={feed.laneRef}
-          raceId={season.currentRace?.id ?? null}
+          raceId={shownRace?.id ?? null}
         />
       </div>
       <TvLowerThirds
         isRacing={feed.isRacing}
         live={liveFeed}
         trackName={trackName}
+        official={feed.status === 'finished' || Boolean(season.photoFinish)}
       />
       <RaceHUD
         mode={season.mode}
@@ -180,7 +190,20 @@ export function TvView() {
         selectedHorseId={followId}
         onSelectHorse={onSelectHorse}
         trackLaps={trackLaps}
+        official={feed.status === 'finished' || Boolean(season.photoFinish)}
       />
+      {season.photoFinish && (
+        <ResultsBoard
+          until={season.photoFinish.until}
+          resultIds={
+            season.photoFinish.resultIds.length
+              ? season.photoFinish.resultIds
+              : [...feed.finishOrderRef.current]
+          }
+          horses={horses}
+          raceName={trackName}
+        />
+      )}
     </div>
   )
 }

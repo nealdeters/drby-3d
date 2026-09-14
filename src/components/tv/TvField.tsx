@@ -38,7 +38,8 @@ function readOverall(map: Record<string, number> | undefined, id: string): numbe
   return undefined
 }
 
-function shotFromOval(p: number, racing: boolean): TvShot {
+function shotFromOval(p: number, racing: boolean, atFinish = false): TvShot {
+  if (atFinish) return 'wire'
   if (!racing) return 'clubhouse'
   const f = fracProgress(p)
   if (f >= 0.46 && f < 0.545) return 'wire'
@@ -320,7 +321,11 @@ export function TvField({
       tvBridge.followOk = false
     }
     if (tvBridge.racing) tvBridge.elapsedMs += clamped * 1000
-    const want = shotFromOval(tvBridge.leaderProgress, tvBridge.racing)
+    const atFinish =
+      liveFeed &&
+      !isRacing &&
+      states.some((st) => crossedFinish(st.lastOverall))
+    const want = shotFromOval(tvBridge.leaderProgress, tvBridge.racing, atFinish)
     const nowS = performance.now() / 1000
     if (want !== shotHold.current.shot && nowS >= shotHold.current.until) {
       shotHold.current = { shot: want, until: nowS + 2.4 }
