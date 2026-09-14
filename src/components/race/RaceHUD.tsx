@@ -210,6 +210,15 @@ export function RaceHUD({
 
   const raceTimeLabel = formatClock(elapsedMs / 1000)
   const countdownLabel = formatClock(countdown)
+  const headline = (trackName && trackName.trim()) || live?.name || 'DRBY Race'
+  const metaBits: string[] = []
+  if (live && live.purse > 0) metaBits.push(`${formatPurse(live.purse)} purse`)
+  if (official) metaBits.push('official')
+  else if (isRacing) metaBits.push('racing')
+  const metaLine = metaBits.length ? metaBits.join(' · ') : '\u00a0'
+  const clockLabel = official ? 'Official' : isRacing ? 'Race time' : upcoming ? 'Next race' : 'Countdown'
+  const clockValue = isRacing || official ? raceTimeLabel : upcoming ? countdownLabel : '00:00'
+  const lapShown = isRacing || official ? leaderLap : 1
 
   const modeLabel = mode === 'live' ? (feedConnected || isRacing ? 'Live' : 'Live · waiting') : 'Demo'
   const paceLabel =
@@ -228,13 +237,8 @@ export function RaceHUD({
           <span className="badge" data-mode={mode}>
             {modeLabel}
           </span>
-          <h2>{live?.name ?? 'DRBY Race'}</h2>
-          <p className="muted">
-            {trackName ?? 'Track'}
-            {` · ${laps} lap${laps === 1 ? '' : 's'}`}
-            {live && live.purse > 0 ? ` · ${formatPurse(live.purse)} purse` : ''}
-            {isRacing ? ' · racing' : ''}
-          </p>
+          <h2>{headline}</h2>
+          <p className="muted">{metaLine}</p>
           {trackSurface && (
             <div className="race-hud__surface muted" title={`Surface: ${trackSurface}`}>
               <span
@@ -253,20 +257,11 @@ export function RaceHUD({
           )}
         </div>
         <div className="race-hud__clock">
-          {isRacing ? (
-            <>
-              <span className="muted">Race time</span>
-              <strong>{raceTimeLabel}</strong>
-              <span className="race-hud__laps">Lap {leaderLap} / {laps}</span>
-            </>
-          ) : (
-            <>
-              <span className="muted">{upcoming ? 'Next race' : 'Countdown'}</span>
-              <strong>{upcoming ? countdownLabel : '—'}</strong>
-              {upcoming && <span className="muted">{upcoming.name}</span>}
-              <span className="muted">{laps} lap{laps === 1 ? '' : 's'}</span>
-            </>
-          )}
+          <span className="muted">{clockLabel}</span>
+          <strong className="race-hud__time">{clockValue}</strong>
+          <span className="race-hud__laps">
+            Lap {lapShown} / {laps}
+          </span>
         </div>
       </div>
 
