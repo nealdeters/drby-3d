@@ -18,7 +18,7 @@
 
 .race-hud__top {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: flex-end;
   justify-content: space-between;
   gap: 0.55rem 0.85rem;
@@ -33,7 +33,15 @@
   backdrop-filter: blur(12px);
   color: var(--cream);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
-  max-width: min(380px, 100%);
+  box-sizing: border-box;
+  width: min(22.5rem, 100%);
+  max-width: min(22.5rem, 100%);
+  min-height: 6.35rem;
+}
+
+.race-hud__top > div:first-child {
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .race-hud__top h2 {
@@ -44,6 +52,9 @@
   font-family: var(--font-display);
   letter-spacing: 0.02em;
   line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .race-hud__top .muted {
@@ -63,15 +74,25 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
+  justify-content: flex-end;
   gap: 0.05rem;
+  flex: 0 0 6.75rem;
+  width: 6.75rem;
+  min-width: 6.75rem;
 }
 
-.race-hud__clock strong {
+.race-hud__clock strong,
+.race-hud__time {
   font-family: var(--font-display);
   font-size: 1.25rem;
   color: var(--gold-bright);
   letter-spacing: 0.06em;
   line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  min-width: 5ch;
+  text-align: right;
+  display: block;
 }
 
 .race-hud__laps {
@@ -81,6 +102,11 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--gold-bright);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  min-width: 8ch;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .race-hud__side {
@@ -295,7 +321,11 @@
   }
 
   .race-hud__top {
-    max-width: min(340px, calc(100% - 290px));
+    width: 22.5rem;
+    min-width: 22.5rem;
+    max-width: 22.5rem;
+    min-height: 6.35rem;
+    flex-wrap: nowrap;
     align-self: flex-start;
   }
 
