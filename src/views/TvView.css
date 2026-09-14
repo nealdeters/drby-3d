@@ -202,6 +202,11 @@
   background: #3a4a38;
 }
 
+.tv-thirds__live.is-official {
+  background: #c9a227;
+  color: #142038;
+}
+
 .tv-view .race-hud {
   z-index: 7;
 }

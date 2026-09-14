@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { RaceHUD } from '../components/race/RaceHUD'
+import { ResultsBoard } from '../components/race/ResultsBoard'
 import { RaceScene } from '../components/race/RaceScene'
 import { useLiveData } from '../context/LiveDataContext'
 import { mapLiveRacerToHorse } from '../hooks/useLiveSeason'
@@ -10,12 +11,13 @@ export function RaceView() {
   const season = useLiveData()
   // Feed is subscribed at provider level (early, before this view mounts)
   const feed = season.raceFeed
+  const shownRace = season.displayRace ?? season.currentRace
   const seedRacers = useMemo(() => {
-    if (!season.currentRace || !season.roster.length) return season.roster
-    const ids = new Set(season.currentRace.racerIds)
+    if (!shownRace || !season.roster.length) return season.roster
+    const ids = new Set(shownRace.racerIds)
     const field = season.roster.filter((r) => ids.has(r.id))
     return field.length ? field : season.roster
-  }, [season.currentRace, season.roster])
+  }, [shownRace, season.roster])
 
   const horses = useMemo(() => {
     if (season.mode === 'live' && (feed.racers.length || seedRacers.length)) {
@@ -26,6 +28,7 @@ export function RaceView() {
   }, [season.mode, season.horses, feed.racers, seedRacers])
 
   const currentEntry =
+    season.races.find((r) => r.id === shownRace?.id) ??
     season.races.find((r) => r.id === season.currentRace?.id) ??
     season.races.find((r) => r.status === 'live') ??
     null
@@ -65,10 +68,11 @@ export function RaceView() {
   }, [season.schedule, season.races, season.currentRace, season.mode, currentEntry, feed.isRacing])
 
   const trackName =
+    shownRace?.track?.name ??
     season.currentRace?.track?.name ??
     (currentEntry ? season.trackById(currentEntry.trackId)?.name : undefined)
 
-  const trackLaps = season.currentRace?.track?.laps ?? 1
+  const trackLaps = shownRace?.track?.laps ?? season.currentRace?.track?.laps ?? 1
 
   /** Resolve racing-strip surface from live race track first, then catalogs — never drop asphalt. */
   const trackSurface = useMemo(() => {
@@ -83,14 +87,19 @@ export function RaceView() {
     }
 
     const trackId =
+      shownRace?.track?.id ??
       season.currentRace?.track?.id ??
       currentEntry?.trackId ??
       null
 
     const candidates: unknown[] = [
+      shownRace?.track?.surface,
       season.currentRace?.track?.surface,
       trackId
         ? season.liveTracks.find((t) => t.id === trackId)?.surface
+        : undefined,
+      shownRace?.id
+        ? season.schedule.find((e) => e.id === shownRace?.id)?.track?.surface
         : undefined,
       season.currentRace?.id
         ? season.schedule.find((e) => e.id === season.currentRace?.id)?.track?.surface
@@ -106,6 +115,7 @@ export function RaceView() {
     }
 
     const nameHint = (
+      shownRace?.track?.name ??
       season.currentRace?.track?.name ??
       (trackId ? season.liveTracks.find((t) => t.id === trackId)?.name : undefined) ??
       (trackId ? season.trackById(trackId)?.name : undefined) ??
@@ -126,6 +136,7 @@ export function RaceView() {
 
     return 'dirt' as const
   }, [
+    shownRace,
     season.currentRace,
     season.liveTracks,
     season.schedule,
@@ -146,7 +157,7 @@ export function RaceView() {
           surface={trackSurface}
           progressRef={feed.progressRef}
           laneRef={feed.laneRef}
-          raceId={season.currentRace?.id ?? null}
+          raceId={shownRace?.id ?? null}
         />
       </div>
       <RaceHUD
@@ -163,7 +174,20 @@ export function RaceView() {
         progressRef={feed.progressRef}
         finishOrderRef={feed.finishOrderRef}
         trackLaps={trackLaps}
+        official={feed.status === 'finished' || Boolean(season.photoFinish)}
       />
+      {season.photoFinish && (
+        <ResultsBoard
+          until={season.photoFinish.until}
+          resultIds={
+            season.photoFinish.resultIds.length
+              ? season.photoFinish.resultIds
+              : [...feed.finishOrderRef.current]
+          }
+          horses={horses}
+          raceName={trackName}
+        />
+      )}
     </div>
   )
 }

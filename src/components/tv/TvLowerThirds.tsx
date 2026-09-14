@@ -5,9 +5,10 @@ type Props = {
   isRacing: boolean
   live: boolean
   trackName?: string
+  official?: boolean
 }
 
-export function TvLowerThirds({ isRacing, live, trackName }: Props) {
+export function TvLowerThirds({ isRacing, live, trackName, official = false }: Props) {
   const [shot, setShot] = useState(tvBridge.shot)
   const [userLook, setUserLook] = useState(tvBridge.userLook)
   const [followId, setFollowId] = useState(tvBridge.followId)
@@ -25,7 +26,7 @@ export function TvLowerThirds({ isRacing, live, trackName }: Props) {
     return () => window.clearInterval(id)
   }, [])
 
-  const raw = followId ? 'follow' : userLook ? 'look' : !isRacing ? 'clubhouse' : shot
+  const raw = followId ? 'follow' : userLook ? 'look' : official ? 'wire' : !isRacing ? 'clubhouse' : shot
   const chip = raw === 'home' || raw === 'spires' ? 'clubhouse' : raw
 
   return (
@@ -37,8 +38,16 @@ export function TvLowerThirds({ isRacing, live, trackName }: Props) {
           Lap {Math.max(1, leaderLap)} / {trackLaps > 0 ? trackLaps : 1}
         </span>
       </div>
-      <div className={live && isRacing ? 'tv-thirds__live' : 'tv-thirds__live is-demo'}>
-        {live && isRacing ? 'Live' : live ? 'Hold' : 'Demo'}
+      <div
+        className={
+          live && isRacing
+            ? 'tv-thirds__live'
+            : live && official
+              ? 'tv-thirds__live is-official'
+              : 'tv-thirds__live is-demo'
+        }
+      >
+        {live && isRacing ? 'Live' : live && official ? 'Official' : live ? 'Hold' : 'Demo'}
       </div>
       <div className="tv-thirds__shot">{chip}</div>
       <div className="tv-thirds__look">
