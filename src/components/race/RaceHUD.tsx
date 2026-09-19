@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState, type MutableRefObject } from 'react'
 import { formatPurse, formatWhen, type Horse, type RaceEntry } from '../../data/fakeSeason'
 import type { DataMode } from '../../types/live'
 import './RaceHUD.css'
+import { VIEW_MODES, type ViewMode } from './cameraViews'
+
 
 type Props = {
   mode: DataMode
@@ -28,6 +30,8 @@ type Props = {
   trackLaps?: number
   /** Photo-finish / official order — field is parked at the wire. */
   official?: boolean
+  viewMode?: ViewMode
+  onViewMode?: (mode: ViewMode) => void
 }
 
 type OrderRow = {
@@ -80,6 +84,9 @@ export function RaceHUD({
   onSelectHorse,
   trackLaps = 1,
   official = false,
+  viewMode,
+  onViewMode,
+
 }: Props) {
   const live =
     currentRace ??
@@ -264,6 +271,27 @@ export function RaceHUD({
           </span>
         </div>
       </div>
+
+      {onViewMode ? (
+        <div className="view-switch" role="radiogroup" aria-label="Camera view">
+          {VIEW_MODES.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              role="radio"
+              aria-checked={viewMode === m.id}
+              className={viewMode === m.id ? 'on' : ''}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation()
+                onViewMode(m.id)
+              }}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       {/* Always-visible running order (mobile top strip + desktop) */}
       <div className="race-hud__order panel" aria-label="Running order">

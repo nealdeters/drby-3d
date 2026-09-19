@@ -1,6 +1,6 @@
 import { memo, useEffect, useMemo, useRef, type MutableRefObject } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
-import { Environment, PerspectiveCamera, Sky } from '@react-three/drei'
+import { Environment, Sky } from '@react-three/drei'
 import * as THREE from 'three'
 import type { Horse } from '../../data/fakeSeason'
 import { HorseMesh } from './Horse'
@@ -19,52 +19,13 @@ import {
   overallToOvalProgress,
   parkAtFinish,
   stepField,
+  trackPoint,
+  trackTangent,
   type HorseSimState,
 } from './trackMath'
-
-/**
- * High grandstand / slight top-¾ overhead.
- * Oval outer extents ~±24 X and ~±15 Z; stands/spires push the frame to
- * roughly X±32 and Z −24…+30. Landscape/desktop keeps the original
- * framing; portrait/narrow aspect gently pulls back, raises, and widens FOV
- * so both turns (±outerRx) plus horse rail margin stay in frame with padding.
- */
-function GrandstandCamera() {
-  const cam = useRef<THREE.PerspectiveCamera>(null)
-  useFrame(({ clock, size }) => {
-    if (!cam.current) return
-    const t = clock.getElapsedTime()
-    const aspect = size.width / Math.max(size.height, 1)
-    // 0 at square/landscape, 1 at typical phone portrait (~0.45)
-    const narrow = THREE.MathUtils.clamp((1 - aspect) / 0.55, 0, 1)
-
-    // Portrait boost ~25% less aggressive than prior overshoot
-    const baseY = 52 + narrow * 15
-    const baseZ = 48 + narrow * 21
-    const fov = 50 + narrow * 12
-    const lookZ = -0.5 + narrow * 0.3
-
-    if (Math.abs(cam.current.fov - fov) > 0.01) {
-      cam.current.fov = fov
-      cam.current.updateProjectionMatrix()
-    }
-
-    cam.current.position.x = Math.sin(t * 0.08) * 0.8
-    cam.current.position.y = baseY + Math.sin(t * 0.12) * 0.2
-    cam.current.position.z = baseZ + Math.cos(t * 0.07) * 0.35
-    cam.current.lookAt(0, 0.15, lookZ)
-  })
-  return (
-    <PerspectiveCamera
-      ref={cam}
-      makeDefault
-      fov={50}
-      near={1}
-      far={500}
-      position={[0, 52, 48]}
-    />
-  )
-}
+import { RaceCamera } from './RaceCamera'
+import { raceBridge } from './raceBridge'
+import { DEFAULT_VIEW, type ViewMode } from './cameraViews'
 
 function laneToRadial(lane: number, count: number): number {
   const L = lane > 0 ? lane : 1
@@ -88,6 +49,8 @@ type FieldProps = {
   /** Current live race id — reset motion when it changes */
   raceId?: string | null
   surface?: TrackSurface
+  followId?: string | null
+  onPick?: (id: string) => void
 }
 
 function readOverall(map: Record<string, number> | undefined, id: string): number | undefined {
@@ -108,6 +71,8 @@ function RacingField({
   laneRef,
   raceId,
   surface = 'dirt',
+  followId = null,
+  onPick,
 }: FieldProps) {
   const fieldRef = useRef<HorseSimState[]>(
     createFieldState(
@@ -319,6 +284,47 @@ function RacingField({
     } else {
       stepField(states, clamped, 1 / 30)
     }
+
+    // Publish pack / follow poses for RaceCamera
+    const ranked = [...states].filter((s) => s?.id)
+    ranked.sort((a, b) => (b.lastOverall ?? fracProgress(b.progress)) - (a.lastOverall ?? fracProgress(a.progress)))
+    const lead = ranked[0]
+    if (lead) {
+      const lp = trackPoint(lead.progress, lead.radial)
+      const lt = trackTangent(lead.progress, lead.radial)
+      raceBridge.packX = lp.x
+      raceBridge.packY = 0.7
+      raceBridge.packZ = lp.z
+      raceBridge.headingX = lt.x
+      raceBridge.headingZ = lt.z
+    }
+    const pts: { x: number; y: number; z: number }[] = []
+    const tans: { x: number; y: number; z: number }[] = []
+    for (const s of ranked.slice(0, 6)) {
+      const p = trackPoint(s.progress, s.radial)
+      const tn = trackTangent(s.progress, s.radial)
+      pts.push({ x: p.x, y: 0.7, z: p.z })
+      tans.push({ x: tn.x, y: 0, z: tn.z })
+    }
+    raceBridge.packPoints = pts
+    raceBridge.packTangents = tans
+    if (followId) {
+      const sub = states.find((s) => s.id === followId)
+      if (sub) {
+        const fp = trackPoint(sub.progress, sub.radial)
+        const ft = trackTangent(sub.progress, sub.radial)
+        raceBridge.followOk = true
+        raceBridge.followX = fp.x
+        raceBridge.followY = 0.7
+        raceBridge.followZ = fp.z
+        raceBridge.followHX = ft.x
+        raceBridge.followHZ = ft.z
+      } else {
+        raceBridge.followOk = false
+      }
+    } else {
+      raceBridge.followOk = false
+    }
   })
 
   const list = useMemo(() => horses, [horses])
@@ -327,7 +333,7 @@ function RacingField({
     <>
       {list.map((horse, i) => (
         <group key={horse.id}>
-          <HorseMesh horse={horse} index={i} fieldRef={fieldRef} />
+          <HorseMesh horse={horse} index={i} fieldRef={fieldRef} onPick={onPick} selected={followId === horse.id} />
           <Kickup horseId={horse.id} index={i} fieldRef={fieldRef} surface={surface} />
         </group>
       ))}
@@ -345,6 +351,10 @@ export type RaceSceneProps = {
   progressRef?: MutableRefObject<Record<string, number>>
   laneRef?: MutableRefObject<Record<string, number>>
   raceId?: string | null
+  viewMode?: ViewMode
+  followId?: string | null
+  homeNonce?: number
+  onPick?: (id: string) => void
 }
 
 export const RaceScene = memo(function RaceScene({
@@ -356,13 +366,17 @@ export const RaceScene = memo(function RaceScene({
   progressRef,
   laneRef,
   raceId = null,
+  viewMode = DEFAULT_VIEW,
+  followId = null,
+  homeNonce = 0,
+  onPick,
 }: RaceSceneProps) {
   return (
     <Canvas shadows dpr={[1, 1.75]} gl={{ antialias: true, alpha: false }}>
       <color attach="background" args={['#87b8e8']} />
       {/* Soft daylight haze — starts past the far rail so the oval stays clear */}
       <fog attach="fog" args={['#c8dcf0', 140, 320]} />
-      <GrandstandCamera />
+      <RaceCamera viewMode={viewMode} followId={followId} homeNonce={homeNonce} />
       <Sky
         distance={450000}
         sunPosition={[80, 35, 40]}
@@ -400,6 +414,8 @@ export const RaceScene = memo(function RaceScene({
         laneRef={laneRef}
         raceId={raceId}
         surface={surface}
+        followId={followId}
+        onPick={onPick}
       />
       <Environment preset="sunset" environmentIntensity={0.35} />
     </Canvas>

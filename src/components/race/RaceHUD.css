@@ -383,3 +383,47 @@
   border-color: rgba(201, 162, 39, 0.7);
   box-shadow: 0 0 0 1px rgba(201, 162, 39, 0.35);
 }
+
+
+.view-switch {
+  pointer-events: auto;
+  display: flex;
+  align-items: stretch;
+  align-self: flex-start;
+  margin: 0.35rem 0 0;
+  background: rgba(12, 16, 24, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  overflow: hidden;
+  z-index: 5;
+}
+.view-switch button {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: rgba(230, 235, 245, 0.65);
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 8px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.view-switch button + button {
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+.view-switch button.on {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+@media (min-width: 900px) {
+  .view-switch {
+    position: absolute;
+    top: 0.85rem;
+    left: 50%;
+    transform: translateX(-50%);
+    margin: 0;
+  }
+}

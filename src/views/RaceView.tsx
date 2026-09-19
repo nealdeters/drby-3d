@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { RaceHUD } from '../components/race/RaceHUD'
 import { ResultsBoard } from '../components/race/ResultsBoard'
 import { RaceScene } from '../components/race/RaceScene'
@@ -6,6 +6,13 @@ import { useLiveData } from '../context/LiveDataContext'
 import { mapLiveRacerToHorse } from '../hooks/useLiveSeason'
 import type { RaceEntry } from '../data/fakeSeason'
 import './RaceView.css'
+import {
+  DEFAULT_VIEW,
+  VIEW_AERIAL,
+  VIEW_CHASE,
+  type ViewMode,
+} from '../components/race/cameraViews'
+
 
 export function RaceView() {
   const season = useLiveData()
@@ -146,9 +153,51 @@ export function RaceView() {
 
   const liveFeed = season.mode === 'live'
 
+  const [followId, setFollowId] = useState<string | null>(null)
+  const [homeNonce, setHomeNonce] = useState(0)
+  const [viewMode, setViewMode] = useState<ViewMode>(DEFAULT_VIEW)
+  const lastTap = useRef(0)
+  const lastXY = useRef({ x: 0, y: 0 })
+
+  function onPick(id: string) {
+    setFollowId((cur) => (cur === id ? null : id))
+    if (viewMode !== VIEW_CHASE && viewMode !== VIEW_AERIAL) {
+      setViewMode(VIEW_CHASE)
+    }
+  }
+
+  function onViewMode(mode: ViewMode) {
+    setViewMode(mode)
+    if (mode !== VIEW_CHASE && mode !== VIEW_AERIAL) setFollowId(null)
+    setHomeNonce((n) => n + 1)
+  }
+
+  function onPointerDown(e: { clientX: number; clientY: number }) {
+    lastXY.current = { x: e.clientX, y: e.clientY }
+  }
+
+  function onPointerUp(e: { clientX: number; clientY: number }) {
+    const dx = e.clientX - lastXY.current.x
+    const dy = e.clientY - lastXY.current.y
+    if (dx * dx + dy * dy > 100) return
+    const now = performance.now()
+    if (now - lastTap.current < 320) {
+      setFollowId(null)
+      setViewMode(DEFAULT_VIEW)
+      setHomeNonce((n) => n + 1)
+      lastTap.current = 0
+      return
+    }
+    lastTap.current = now
+  }
+
   return (
     <div className="race-view">
-      <div className="race-view__canvas">
+      <div
+        className="race-view__canvas"
+        onPointerDown={onPointerDown}
+        onPointerUp={onPointerUp}
+      >
         <RaceScene
           horses={horses}
           liveFeed={liveFeed}
@@ -158,6 +207,10 @@ export function RaceView() {
           progressRef={feed.progressRef}
           laneRef={feed.laneRef}
           raceId={shownRace?.id ?? null}
+          viewMode={viewMode}
+          followId={followId}
+          homeNonce={homeNonce}
+          onPick={onPick}
         />
       </div>
       <RaceHUD
@@ -175,6 +228,10 @@ export function RaceView() {
         finishOrderRef={feed.finishOrderRef}
         trackLaps={trackLaps}
         official={feed.status === 'finished' || Boolean(season.photoFinish)}
+        selectedHorseId={followId}
+        onSelectHorse={onPick}
+        viewMode={viewMode}
+        onViewMode={onViewMode}
       />
       {season.photoFinish && (
         <ResultsBoard

@@ -12,6 +12,8 @@ type Props = {
   index: number
   /** Shared mutable field state — read by index each frame */
   fieldRef: MutableRefObject<HorseSimState[]>
+  onPick?: (id: string) => void
+  selected?: boolean
 }
 
 type LegRefs = {
@@ -33,7 +35,7 @@ type JockeyRefs = {
  * Low-poly thoroughbred with a left-lead transverse gallop:
  * hind→hind→fore→fore, then a suspension beat. Jockey is a two-point seat.
  */
-export function HorseMesh({ horse, index, fieldRef }: Props) {
+export function HorseMesh({ horse, index, fieldRef, onPick, selected }: Props) {
   const root = useRef<THREE.Group>(null)
   const body = useRef<THREE.Group>(null)
   const neck = useRef<THREE.Group>(null)
@@ -124,7 +126,14 @@ export function HorseMesh({ horse, index, fieldRef }: Props) {
   }
 
   return (
-    <group ref={root} frustumCulled={false}>
+    <group
+      ref={root}
+      onClick={(e) => {
+        e.stopPropagation()
+        onPick?.(horse.id)
+      }}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
       <group ref={body}>
         {/* Barrel / torso */}
         <mesh castShadow position={[0, 0.72, 0.02]} scale={[1, 1, 1.05]}>
@@ -279,6 +288,12 @@ export function HorseMesh({ horse, index, fieldRef }: Props) {
       </group>
 
       {/* Number plate — larger high-contrast jersey + white/black numeral */}
+      {selected ? (
+        <mesh position={[0, 2.55, 0]}>
+          <sphereGeometry args={[0.18, 12, 10]} />
+          <meshBasicMaterial color="#ffe08a" />
+        </mesh>
+      ) : null}
       <Billboard position={[0, 2.05, 0]} follow frustumCulled={false}>
         <mesh position={[0, 0, -0.03]}>
           <planeGeometry args={[0.78, 0.62]} />
