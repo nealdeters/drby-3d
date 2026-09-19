@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
 
-export type ViewId = 'race' | 'tv' | 'schedule' | 'standings' | 'seasons' | 'tracks'
+export type ViewId = 'race' | 'schedule' | 'standings' | 'seasons' | 'tracks'
 
-const VALID: ViewId[] = ['race', 'tv', 'schedule', 'standings', 'seasons', 'tracks']
+const VALID: ViewId[] = ['race', 'schedule', 'standings', 'seasons', 'tracks']
 
 function readHash(): ViewId {
   const raw = window.location.hash.replace(/^#\/?/, '').split('?')[0]
   const first = raw.split('/').filter(Boolean)[0] ?? ''
+  // Former TV page — send bookmarks to Race
+  if (first === 'tv') return 'race'
   if (VALID.includes(first as ViewId)) return first as ViewId
   return 'race'
 }

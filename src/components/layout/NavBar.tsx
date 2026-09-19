@@ -4,7 +4,6 @@ import './NavBar.css'
 
 const TABS: { id: ViewId; label: string }[] = [
   { id: 'race', label: 'Race' },
-  { id: 'tv', label: 'TV' },
   { id: 'schedule', label: 'Schedule' },
   { id: 'standings', label: 'Standings' },
   { id: 'seasons', label: 'Seasons' },

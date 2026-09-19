@@ -14,8 +14,8 @@ export const VIEW_MODES = [
 
 export type ViewMode = (typeof VIEW_MODES)[number]['id']
 
-/** User asked for aerial as the default whole-track overview. */
-export const DEFAULT_VIEW: ViewMode = VIEW_AERIAL
+/** Default opens On track (pack framing); Aerial remains available in the switcher. */
+export const DEFAULT_VIEW: ViewMode = VIEW_ON_TRACK
 
 export const AERIAL_FOV = 50
 export const AERIAL_PAD = 1.28
