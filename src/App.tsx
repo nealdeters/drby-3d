@@ -7,7 +7,6 @@ import { ScheduleView } from './views/ScheduleView'
 import { SeasonsView } from './views/SeasonsView'
 import { StandingsView } from './views/StandingsView'
 import { TracksView } from './views/TracksView'
-import { TvView } from './views/TvView'
 
 export default function App() {
   const { view, setView } = useView()
@@ -28,7 +27,6 @@ export default function App() {
         />
         <main className="main-content">
           {view === 'race' && <RaceView />}
-          {view === 'tv' && <TvView />}
           {view === 'schedule' && <ScheduleView />}
           {view === 'standings' && <StandingsView />}
           {view === 'seasons' && <SeasonsView />}
