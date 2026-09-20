@@ -1,4 +1,12 @@
-import { countCarouselPoles, sampleGallop, wrap01 } from '../src/components/race/gallop.ts'
+import {
+  countCarouselPoles,
+  sampleGallop,
+  wrap01,
+  sampleTrot,
+  sampleLocomotion,
+  trotDiagonal1Support,
+  trotDiagonal2Support,
+} from '../src/components/race/gallop.ts'
 
 const STEPS = 200
 let maxPoles = 0
@@ -63,3 +71,38 @@ for (let i = 0; i < 8; i++) {
   console.log('phase', JSON.stringify(row))
 }
 void wrap01
+
+const TROT_STEPS = 200
+let bothDiags = 0
+let neitherDiag = 0
+let d1 = 0
+let d2 = 0
+for (let i = 0; i < TROT_STEPS; i++) {
+  const pose = sampleTrot(i / TROT_STEPS)
+  const a = trotDiagonal1Support(pose)
+  const b = trotDiagonal2Support(pose)
+  if (a) d1++
+  if (b) d2++
+  if (a && b) bothDiags++
+  if (!a && !b && pose.airborne < 0.35) neitherDiag++
+}
+const trotFail: string[] = []
+if (bothDiags > 8) trotFail.push(`trot both diagonals supporting = ${bothDiags} (want mostly exclusive)`)
+if (d1 < 60 || d2 < 60) trotFail.push(`trot diagonal counts d1=${d1} d2=${d2} (want each ~80+/200)`)
+if (neitherDiag > 40) trotFail.push(`trot neither-diagonal mid-stance = ${neitherDiag}`)
+
+const locGate = sampleLocomotion(0.2, 0)
+const locTrot = sampleLocomotion(0.2, 0.95)
+const locGallop = sampleLocomotion(0.2, 1.3)
+if (Math.abs(locGate.swing.fl) > 1e-6) trotFail.push('gate locomotion should be GATE_POSE')
+const same =
+  Math.abs(locTrot.swing.fl - locGallop.swing.fl) < 0.02 &&
+  Math.abs(locTrot.knee.fl - locGallop.knee.fl) < 0.02
+if (same) trotFail.push('trot and gallop samples at phase 0.2 should differ')
+
+console.log(JSON.stringify({ trot: { d1, d2, bothDiags, neitherDiag } }, null, 2))
+if (trotFail.length) {
+  console.error(trotFail.join('\n'))
+  process.exit(1)
+}
+console.log('trot / locomotion check ok')

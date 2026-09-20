@@ -1,15 +1,11 @@
 import { TRACK } from './trackMath'
 
-export const VIEW_FULL = 'full-track'
 export const VIEW_AERIAL = 'aerial'
 export const VIEW_ON_TRACK = 'on-track'
-export const VIEW_CHASE = 'chase'
 
 export const VIEW_MODES = [
-  { id: VIEW_FULL, label: 'Full track' },
   { id: VIEW_AERIAL, label: 'Aerial' },
   { id: VIEW_ON_TRACK, label: 'On track' },
-  { id: VIEW_CHASE, label: 'Chase' },
 ] as const
 
 export type ViewMode = (typeof VIEW_MODES)[number]['id']
@@ -20,10 +16,6 @@ export const DEFAULT_VIEW: ViewMode = VIEW_ON_TRACK
 export const AERIAL_FOV = 50
 export const AERIAL_PAD = 1.28
 export const AERIAL_TILT = 0.22
-
-export const FULL_FOV = 50
-export const FULL_PAD = 1.45
-export const FULL_TILT = 0.06
 
 export const FOLLOW_AERIAL_FOV = 50
 export const FOLLOW_AERIAL_HEIGHT = 58
@@ -68,15 +60,6 @@ export function aerialShot(opts: { aspect?: number; fov?: number; pad?: number; 
     dist: y,
     fov,
   }
-}
-
-export function fullTrackShot(opts: { aspect?: number; fov?: number } = {}): Shot {
-  return aerialShot({
-    aspect: opts.aspect,
-    fov: opts.fov ?? FULL_FOV,
-    pad: FULL_PAD,
-    tilt: FULL_TILT,
-  })
 }
 
 export function followAerialShot(target: Vec3 | null | undefined, opts: { height?: number; tilt?: number; fov?: number } = {}): Shot {

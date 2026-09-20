@@ -9,16 +9,12 @@ import {
   DEFAULT_VIEW,
   FOLLOW_AERIAL_FOV,
   FOLLOW_AERIAL_K,
-  FULL_FOV,
   PACK_FOV,
   VIEW_AERIAL,
-  VIEW_CHASE,
-  VIEW_FULL,
   VIEW_ON_TRACK,
   aerialShot,
   dampPoint,
   followAerialShot,
-  fullTrackShot,
   packShot,
   type Vec3,
   type ViewMode,
@@ -74,7 +70,7 @@ export function RaceCamera({ viewMode, followId, homeNonce }: Props) {
     const cam = camera as THREE.PerspectiveCamera
     cam.near = 0.5
     cam.far = Math.max(420, boot.span * 5)
-    cam.fov = modeRef.current === VIEW_FULL ? FULL_FOV : modeRef.current === VIEW_AERIAL ? FOLLOW_AERIAL_FOV : PACK_FOV
+    cam.fov = modeRef.current === VIEW_AERIAL ? FOLLOW_AERIAL_FOV : PACK_FOV
     cam.updateProjectionMatrix()
   }, [camera, boot.span, viewMode])
 
@@ -94,15 +90,6 @@ export function RaceCamera({ viewMode, followId, homeNonce }: Props) {
     const k = doSnap ? 1 : 0.14
     snap.current = false
 
-    if (mode === VIEW_FULL) {
-      if (controls.current) controls.current.enabled = true
-      if (userHeld.current) return
-      const shot = fullTrackShot({ aspect, fov: FULL_FOV })
-      applyShot(cam, shot, desired, desiredLook, look, k, shot.span)
-      if (controls.current) controls.current.target.lerp(look, k)
-      return
-    }
-
     if (mode === VIEW_AERIAL && tracking) {
       if (controls.current) controls.current.enabled = false
       const next = { x: raceBridge.followX, y: raceBridge.followY, z: raceBridge.followZ }
@@ -119,30 +106,6 @@ export function RaceCamera({ viewMode, followId, homeNonce }: Props) {
       const shot = aerialShot({ aspect, fov: AERIAL_FOV })
       applyShot(cam, shot, desired, desiredLook, look, k, shot.span)
       if (controls.current) controls.current.target.lerp(look, k)
-      return
-    }
-
-    if (tracking && (mode === VIEW_CHASE || Boolean(id))) {
-      if (controls.current) controls.current.enabled = false
-      const px = raceBridge.followX
-      const py = raceBridge.followY
-      const pz = raceBridge.followZ
-      const hx = raceBridge.followHX
-      const hz = raceBridge.followHZ
-      const len = Math.hypot(hx, hz) || 1
-      const fx = hx / len
-      const fz = hz / len
-      const sx = -fz
-      const sz = fx
-      if (Math.abs(cam.fov - PACK_FOV) > 0.2) {
-        cam.fov = PACK_FOV
-        cam.updateProjectionMatrix()
-      }
-      desired.set(px - fx * 9 + sx * 3.2, py + 3.4, pz - fz * 9 + sz * 3.2)
-      look.set(px + fx * 5.5, py + 0.35, pz + fz * 5.5)
-      cam.position.lerp(desired, 0.12)
-      cam.lookAt(look)
-      if (controls.current) controls.current.target.lerp(look, 0.12)
       return
     }
 
@@ -203,8 +166,8 @@ export function RaceCamera({ viewMode, followId, homeNonce }: Props) {
       dampingFactor={0.08}
       onStart={() => {
         const mode = modeRef.current
-        if (mode === VIEW_CHASE || (mode === VIEW_AERIAL && followRef.current)) return
-        if (mode === VIEW_FULL || mode === VIEW_AERIAL || mode === VIEW_ON_TRACK) userHeld.current = true
+        if (mode === VIEW_AERIAL && followRef.current) return
+        if (mode === VIEW_AERIAL || mode === VIEW_ON_TRACK) userHeld.current = true
       }}
     />
   )

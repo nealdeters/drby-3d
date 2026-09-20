@@ -5,7 +5,7 @@ import * as THREE from 'three'
 import type { Horse as HorseData } from '../../data/fakeSeason'
 import type { HorseSimState } from './trackMath'
 import { trackPoint, trackTangent } from './trackMath'
-import { GATE_POSE, sampleGallop, wrap01, type GallopSample } from './gallop'
+import { GATE_POSE, sampleLocomotion, wrap01, type GallopSample } from './gallop'
 
 type Props = {
   horse: HorseData
@@ -19,6 +19,7 @@ type Props = {
 type LegRefs = {
   hip: THREE.Group
   knee: THREE.Group
+  fetlock: THREE.Group
 }
 
 type JockeyRefs = {
@@ -32,8 +33,9 @@ type JockeyRefs = {
 }
 
 /**
- * Low-poly thoroughbred with a left-lead transverse gallop:
- * hind→hind→fore→fore, then a suspension beat. Jockey is a two-point seat.
+ * Thoroughbred silhouette (capsules/cylinders) with a two-beat diagonal trot
+ * that blends into the left-lead gallop on the stretch kick. Jockey is a
+ * two-point seat in silks.
  */
 export function HorseMesh({ horse, index, fieldRef, onPick, selected }: Props) {
   const root = useRef<THREE.Group>(null)
@@ -84,9 +86,9 @@ export function HorseMesh({ horse, index, fieldRef, onPick, selected }: Props) {
       return
     }
 
-    const strideHz = 2.35 + s.pace * 2.15
+    const strideHz = s.pace < 1.05 ? 2.55 + s.pace * 0.7 : 2.35 + s.pace * 2.15
     gait.current = wrap01(gait.current + dt * strideHz)
-    const pose = sampleGallop(gait.current)
+    const pose = sampleLocomotion(gait.current, s.pace)
     applyPose(pose)
     root.current.position.set(pos.x, 0.12 + pose.bob, pos.z)
     root.current.rotation.z = pose.barrelRoll
@@ -103,25 +105,25 @@ export function HorseMesh({ horse, index, fieldRef, onPick, selected }: Props) {
       body.current.position.y = pose.gather * 0.028
       body.current.rotation.x = pose.barrelPitch
     }
-    if (neck.current) neck.current.rotation.x = 0.35 + pose.neckPitch
-    if (head.current) head.current.rotation.x = -0.15 + pose.headPitch
+    if (neck.current) neck.current.rotation.x = 0.28 + pose.neckPitch
+    if (head.current) head.current.rotation.x = -0.22 + pose.headPitch
     if (tail.current) {
-      tail.current.rotation.x = 0.35 + pose.tailPitch
+      tail.current.rotation.x = 0.4 + pose.tailPitch
       tail.current.rotation.y = pose.tailYaw
     }
     if (jockey.current) {
-      jockey.current.position.set(0, 0.92 + pose.hipY, -0.02 + pose.hipZ)
-      jockey.current.rotation.x = 0.12 + pose.foldDelta * 0.25
+      jockey.current.position.set(0, 1.02 + pose.hipY, -0.04 + pose.hipZ)
+      jockey.current.rotation.x = 0.18 + pose.foldDelta * 0.25
     }
     const j = jockeyBits.current
     if (j) {
       j.hips.position.y = pose.hipY * 0.15
-      j.torso.rotation.x = 0.55 + pose.foldDelta
+      j.torso.rotation.x = 0.62 + pose.foldDelta
       j.helm.rotation.x = pose.helmetPitch
-      j.armL.rotation.x = 0.55 + pose.armGive
-      j.armR.rotation.x = 0.55 + pose.armGive
-      j.thighL.rotation.x = 0.85 + pose.thighDelta
-      j.thighR.rotation.x = 0.85 + pose.thighDelta
+      j.armL.rotation.x = 0.35 + pose.armGive
+      j.armR.rotation.x = 0.35 + pose.armGive
+      j.thighL.rotation.x = 0.92 + pose.thighDelta
+      j.thighR.rotation.x = 0.92 + pose.thighDelta
     }
   }
 
@@ -135,149 +137,154 @@ export function HorseMesh({ horse, index, fieldRef, onPick, selected }: Props) {
       onPointerDown={(e) => e.stopPropagation()}
     >
       <group ref={body}>
-        {/* Barrel / torso */}
-        <mesh castShadow position={[0, 0.72, 0.02]} scale={[1, 1, 1.05]}>
-          <boxGeometry args={[0.42, 0.48, 0.95]} />
-          <meshStandardMaterial color={coat} roughness={0.82} />
+        {/* Barrel — long thoroughbred torso */}
+        <mesh castShadow position={[0, 0.78, 0.02]} rotation={[Math.PI / 2, 0, 0]}>
+          <capsuleGeometry args={[0.2, 0.7, 5, 10]} />
+          <meshStandardMaterial color={coat} roughness={0.62} />
         </mesh>
-        {/* Chest */}
-        <mesh castShadow position={[0, 0.7, 0.52]}>
-          <boxGeometry args={[0.4, 0.46, 0.28]} />
-          <meshStandardMaterial color={coatLight} roughness={0.8} />
+        {/* Chest / shoulder */}
+        <mesh castShadow position={[0, 0.76, 0.46]}>
+          <sphereGeometry args={[0.22, 10, 8]} />
+          <meshStandardMaterial color={coatLight} roughness={0.6} />
         </mesh>
-        {/* Rump */}
-        <mesh castShadow position={[0, 0.74, -0.48]}>
-          <boxGeometry args={[0.4, 0.42, 0.32]} />
-          <meshStandardMaterial color={coat} roughness={0.82} />
+        {/* Croup */}
+        <mesh castShadow position={[0, 0.8, -0.42]} scale={[1, 0.92, 1.05]}>
+          <sphereGeometry args={[0.2, 10, 8]} />
+          <meshStandardMaterial color={coat} roughness={0.62} />
         </mesh>
         {/* Belly tuck */}
-        <mesh castShadow position={[0, 0.48, 0]}>
-          <boxGeometry args={[0.34, 0.16, 0.7]} />
-          <meshStandardMaterial color={coatDark} roughness={0.85} />
+        <mesh castShadow position={[0, 0.58, 0.02]} rotation={[Math.PI / 2, 0, 0]} scale={[0.85, 1, 0.7]}>
+          <capsuleGeometry args={[0.14, 0.42, 4, 8]} />
+          <meshStandardMaterial color={coatDark} roughness={0.7} />
         </mesh>
 
         {/* Saddle + cloth (silks) */}
-        <mesh castShadow position={[0, 0.98, -0.05]}>
-          <boxGeometry args={[0.36, 0.06, 0.38]} />
+        <mesh castShadow position={[0, 0.98, -0.04]} rotation={[Math.PI / 2, 0, 0]}>
+          <capsuleGeometry args={[0.08, 0.22, 4, 8]} />
           <meshStandardMaterial color="#2a2118" roughness={0.7} />
         </mesh>
-        <mesh castShadow position={[0, 0.95, -0.02]}>
-          <boxGeometry args={[0.5, 0.04, 0.42]} />
-          <meshStandardMaterial color={horse.jersey} roughness={0.55} metalness={0.08} />
+        <mesh castShadow position={[0, 0.96, -0.02]}>
+          <boxGeometry args={[0.48, 0.035, 0.4]} />
+          <meshStandardMaterial color={horse.jersey} roughness={0.5} metalness={0.08} />
         </mesh>
 
-        {/* Neck */}
-        <group ref={neck} position={[0, 0.88, 0.58]}>
-          <mesh castShadow position={[0, 0.22, 0.18]} rotation={[0.15, 0, 0]}>
-            <boxGeometry args={[0.2, 0.28, 0.48]} />
-            <meshStandardMaterial color={coat} roughness={0.8} />
+        {/* Neck — longer, arched */}
+        <group ref={neck} position={[0, 0.92, 0.52]}>
+          <mesh castShadow position={[0, 0.16, 0.22]} rotation={[0.85, 0, 0]}>
+            <capsuleGeometry args={[0.09, 0.42, 5, 8]} />
+            <meshStandardMaterial color={coat} roughness={0.6} />
           </mesh>
-          {/* Mane */}
-          <mesh castShadow position={[0, 0.38, 0.12]} rotation={[0.2, 0, 0]}>
-            <boxGeometry args={[0.08, 0.14, 0.42]} />
+          {/* Mane along the crest */}
+          <mesh castShadow position={[0, 0.26, 0.16]} rotation={[0.9, 0, 0]}>
+            <capsuleGeometry args={[0.035, 0.38, 4, 6]} />
+            <meshStandardMaterial color={mane} roughness={0.88} />
+          </mesh>
+          <mesh castShadow position={[0, 0.34, 0.08]} rotation={[0.55, 0, 0]}>
+            <sphereGeometry args={[0.05, 6, 6]} />
             <meshStandardMaterial color={mane} roughness={0.9} />
           </mesh>
 
           {/* Head */}
-          <group ref={head} position={[0, 0.38, 0.42]}>
-            <mesh castShadow position={[0, 0.02, 0.12]}>
-              <boxGeometry args={[0.22, 0.2, 0.32]} />
-              <meshStandardMaterial color={coatDark} roughness={0.78} />
+          <group ref={head} position={[0, 0.34, 0.5]}>
+            <mesh castShadow position={[0, 0.02, 0.04]}>
+              <sphereGeometry args={[0.1, 8, 8]} />
+              <meshStandardMaterial color={coatDark} roughness={0.58} />
             </mesh>
-            {/* Muzzle */}
-            <mesh castShadow position={[0, -0.02, 0.34]}>
-              <boxGeometry args={[0.16, 0.14, 0.2]} />
-              <meshStandardMaterial color={coatLight} roughness={0.75} />
+            <mesh castShadow position={[0, -0.01, 0.18]} rotation={[Math.PI / 2, 0, 0]}>
+              <capsuleGeometry args={[0.07, 0.16, 4, 8]} />
+              <meshStandardMaterial color={coatLight} roughness={0.55} />
             </mesh>
-            <mesh castShadow position={[0, -0.04, 0.44]}>
-              <boxGeometry args={[0.14, 0.08, 0.06]} />
-              <meshStandardMaterial color="#1c1612" roughness={0.6} />
+            <mesh castShadow position={[0, -0.03, 0.3]}>
+              <sphereGeometry args={[0.055, 8, 6]} />
+              <meshStandardMaterial color={coatLight} roughness={0.55} />
+            </mesh>
+            <mesh castShadow position={[0, -0.05, 0.35]}>
+              <sphereGeometry args={[0.032, 6, 6]} />
+              <meshStandardMaterial color="#1c1612" roughness={0.5} />
             </mesh>
             {/* Ears */}
-            <mesh castShadow position={[-0.07, 0.16, 0.02]} rotation={[0.25, 0, -0.2]}>
-              <boxGeometry args={[0.05, 0.12, 0.04]} />
+            <mesh castShadow position={[-0.055, 0.13, -0.02]} rotation={[0.35, 0, -0.25]}>
+              <coneGeometry args={[0.028, 0.1, 5]} />
               <meshStandardMaterial color={coatDark} />
             </mesh>
-            <mesh castShadow position={[0.07, 0.16, 0.02]} rotation={[0.25, 0, 0.2]}>
-              <boxGeometry args={[0.05, 0.12, 0.04]} />
+            <mesh castShadow position={[0.055, 0.13, -0.02]} rotation={[0.35, 0, 0.25]}>
+              <coneGeometry args={[0.028, 0.1, 5]} />
               <meshStandardMaterial color={coatDark} />
             </mesh>
             {/* Eyes */}
-            <mesh position={[-0.11, 0.04, 0.18]}>
-              <boxGeometry args={[0.03, 0.03, 0.03]} />
+            <mesh position={[-0.075, 0.03, 0.1]}>
+              <sphereGeometry args={[0.018, 6, 6]} />
               <meshStandardMaterial color="#0a0806" />
             </mesh>
-            <mesh position={[0.11, 0.04, 0.18]}>
-              <boxGeometry args={[0.03, 0.03, 0.03]} />
+            <mesh position={[0.075, 0.03, 0.1]}>
+              <sphereGeometry args={[0.018, 6, 6]} />
               <meshStandardMaterial color="#0a0806" />
             </mesh>
           </group>
         </group>
 
         {/* Tail */}
-        <group ref={tail} position={[0, 0.88, -0.62]}>
-          <mesh castShadow position={[0, -0.05, -0.22]} rotation={[0.5, 0, 0]}>
-            <boxGeometry args={[0.08, 0.1, 0.45]} />
-            <meshStandardMaterial color={mane} roughness={0.92} />
+        <group ref={tail} position={[0, 0.88, -0.58]}>
+          <mesh castShadow position={[0, -0.08, -0.18]} rotation={[0.85, 0, 0]}>
+            <capsuleGeometry args={[0.04, 0.32, 4, 6]} />
+            <meshStandardMaterial color={mane} roughness={0.9} />
           </mesh>
-          <mesh castShadow position={[0, -0.18, -0.42]} rotation={[0.75, 0, 0]}>
-            <boxGeometry args={[0.1, 0.08, 0.28]} />
-            <meshStandardMaterial color={mane} roughness={0.92} />
+          <mesh castShadow position={[0, -0.22, -0.38]} rotation={[1.05, 0, 0]}>
+            <capsuleGeometry args={[0.05, 0.2, 4, 6]} />
+            <meshStandardMaterial color={mane} roughness={0.9} />
           </mesh>
         </group>
 
-        {/* Legs */}
         <Leg
           side={-1}
-          z={0.38}
+          z={0.36}
           coat={coat}
           coatDark={coatDark}
           sock={sock}
           hoof={hoof}
           hind={false}
-          bind={(hip, knee) => {
-            fl.current = { hip, knee }
+          bind={(hip, knee, fetlock) => {
+            fl.current = { hip, knee, fetlock }
           }}
         />
         <Leg
           side={1}
-          z={0.38}
+          z={0.36}
           coat={coat}
           coatDark={coatDark}
           sock={sock}
           hoof={hoof}
           hind={false}
-          bind={(hip, knee) => {
-            fr.current = { hip, knee }
+          bind={(hip, knee, fetlock) => {
+            fr.current = { hip, knee, fetlock }
           }}
         />
         <Leg
           side={-1}
-          z={-0.38}
+          z={-0.36}
           coat={coat}
           coatDark={coatDark}
           sock={sock}
           hoof={hoof}
           hind
-          bind={(hip, knee) => {
-            hl.current = { hip, knee }
+          bind={(hip, knee, fetlock) => {
+            hl.current = { hip, knee, fetlock }
           }}
         />
         <Leg
           side={1}
-          z={-0.38}
+          z={-0.36}
           coat={coat}
           coatDark={coatDark}
           sock={sock}
           hoof={hoof}
           hind
-          bind={(hip, knee) => {
-            hr.current = { hip, knee }
+          bind={(hip, knee, fetlock) => {
+            hr.current = { hip, knee, fetlock }
           }}
         />
 
-        {/* Two-point jockey: hips over irons, folded torso, helmet quieter than the seat */}
-        <group ref={jockey} position={[0, 0.92, -0.02]}>
+        <group ref={jockey} position={[0, 1.02, -0.04]}>
           <JockeySilks
             jersey={horse.jersey}
             bind={(bits) => {
@@ -287,7 +294,6 @@ export function HorseMesh({ horse, index, fieldRef, onPick, selected }: Props) {
         </group>
       </group>
 
-      {/* Number plate — larger high-contrast jersey + white/black numeral */}
       {selected ? (
         <mesh position={[0, 2.55, 0]}>
           <sphereGeometry args={[0.18, 12, 10]} />
@@ -335,6 +341,9 @@ function JockeySilks({
   const thighL = useRef<THREE.Group>(null)
   const thighR = useRef<THREE.Group>(null)
   const bound = useRef(false)
+  const skin = '#e8c4a8'
+  const boot = '#1a1410'
+  const breech = '#f0ebe3'
 
   useFrame(() => {
     if (
@@ -362,47 +371,69 @@ function JockeySilks({
 
   return (
     <group ref={hips}>
-      <group ref={thighL} position={[-0.1, -0.02, 0.04]} rotation={[0.85, 0.08, 0.12]}>
-        <mesh castShadow position={[0, -0.1, 0.02]}>
-          <boxGeometry args={[0.08, 0.2, 0.08]} />
-          <meshStandardMaterial color="#1a1410" />
+      {/* Two-point: thighs along the barrel, boots in the irons */}
+      <group ref={thighL} position={[-0.11, -0.02, 0.05]} rotation={[0.92, 0.1, 0.14]}>
+        <mesh castShadow position={[0, -0.12, 0]}>
+          <capsuleGeometry args={[0.04, 0.16, 4, 6]} />
+          <meshStandardMaterial color={breech} roughness={0.7} />
+        </mesh>
+        <mesh castShadow position={[0, -0.26, 0.02]} rotation={[0.35, 0, 0]}>
+          <capsuleGeometry args={[0.035, 0.12, 4, 6]} />
+          <meshStandardMaterial color={boot} roughness={0.55} />
         </mesh>
       </group>
-      <group ref={thighR} position={[0.1, -0.02, 0.04]} rotation={[0.85, -0.08, -0.12]}>
-        <mesh castShadow position={[0, -0.1, 0.02]}>
-          <boxGeometry args={[0.08, 0.2, 0.08]} />
-          <meshStandardMaterial color="#1a1410" />
+      <group ref={thighR} position={[0.11, -0.02, 0.05]} rotation={[0.92, -0.1, -0.14]}>
+        <mesh castShadow position={[0, -0.12, 0]}>
+          <capsuleGeometry args={[0.04, 0.16, 4, 6]} />
+          <meshStandardMaterial color={breech} roughness={0.7} />
+        </mesh>
+        <mesh castShadow position={[0, -0.26, 0.02]} rotation={[0.35, 0, 0]}>
+          <capsuleGeometry args={[0.035, 0.12, 4, 6]} />
+          <meshStandardMaterial color={boot} roughness={0.55} />
         </mesh>
       </group>
-      <mesh castShadow position={[0, 0.08, -0.02]} rotation={[0.2, 0, 0]}>
-        <boxGeometry args={[0.24, 0.16, 0.2]} />
-        <meshStandardMaterial color="#f0ebe3" roughness={0.7} />
+      <mesh castShadow position={[0, 0.06, -0.02]} rotation={[0.25, 0, 0]}>
+        <sphereGeometry args={[0.09, 8, 8]} />
+        <meshStandardMaterial color={breech} roughness={0.7} />
       </mesh>
-      <group ref={torso} position={[0, 0.22, 0.02]} rotation={[0.55, 0, 0]}>
-        <mesh castShadow position={[0, 0.1, 0.04]}>
-          <boxGeometry args={[0.28, 0.32, 0.22]} />
-          <meshStandardMaterial color={jersey} roughness={0.55} metalness={0.1} />
+      <group ref={torso} position={[0, 0.16, 0.02]} rotation={[0.62, 0, 0]}>
+        <mesh castShadow position={[0, 0.12, 0.03]}>
+          <capsuleGeometry args={[0.09, 0.16, 5, 8]} />
+          <meshStandardMaterial color={jersey} roughness={0.5} metalness={0.1} />
         </mesh>
-        <group ref={armL} position={[-0.16, 0.08, 0.12]} rotation={[0.55, 0.28, 0.35]}>
-          <mesh castShadow position={[0, 0, 0.14]}>
-            <boxGeometry args={[0.07, 0.07, 0.32]} />
+        <group ref={armL} position={[-0.12, 0.12, 0.08]} rotation={[0.35, 0.32, 0.4]}>
+          <mesh castShadow position={[0, 0, 0.13]}>
+            <capsuleGeometry args={[0.032, 0.2, 4, 6]} />
             <meshStandardMaterial color={jersey} />
           </mesh>
-        </group>
-        <group ref={armR} position={[0.16, 0.08, 0.12]} rotation={[0.55, -0.28, -0.35]}>
-          <mesh castShadow position={[0, 0, 0.14]}>
-            <boxGeometry args={[0.07, 0.07, 0.32]} />
-            <meshStandardMaterial color={jersey} />
+          <mesh castShadow position={[0, 0, 0.26]}>
+            <sphereGeometry args={[0.028, 6, 6]} />
+            <meshStandardMaterial color={skin} />
           </mesh>
         </group>
-        <group ref={helm} position={[0, 0.28, 0.14]}>
+        <group ref={armR} position={[0.12, 0.12, 0.08]} rotation={[0.35, -0.32, -0.4]}>
+          <mesh castShadow position={[0, 0, 0.13]}>
+            <capsuleGeometry args={[0.032, 0.2, 4, 6]} />
+            <meshStandardMaterial color={jersey} />
+          </mesh>
+          <mesh castShadow position={[0, 0, 0.26]}>
+            <sphereGeometry args={[0.028, 6, 6]} />
+            <meshStandardMaterial color={skin} />
+          </mesh>
+        </group>
+        <group ref={helm} position={[0, 0.28, 0.12]}>
           <mesh castShadow>
-            <sphereGeometry args={[0.11, 10, 10]} />
-            <meshStandardMaterial color={jersey} roughness={0.45} metalness={0.15} />
+            <sphereGeometry args={[0.095, 10, 10]} />
+            <meshStandardMaterial color={jersey} roughness={0.4} metalness={0.18} />
           </mesh>
-          <mesh position={[0, -0.04, 0.02]}>
-            <sphereGeometry args={[0.08, 8, 8]} />
-            <meshStandardMaterial color="#e8c4a8" roughness={0.7} />
+          {/* visor */}
+          <mesh position={[0, -0.01, 0.08]} rotation={[0.35, 0, 0]}>
+            <boxGeometry args={[0.14, 0.045, 0.08]} />
+            <meshStandardMaterial color="#14110e" roughness={0.35} metalness={0.2} />
+          </mesh>
+          <mesh position={[0, -0.05, 0.03]}>
+            <sphereGeometry args={[0.055, 8, 8]} />
+            <meshStandardMaterial color={skin} roughness={0.7} />
           </mesh>
         </group>
       </group>
@@ -427,42 +458,46 @@ function Leg({
   sock: string
   hoof: string
   hind: boolean
-  bind: (hip: THREE.Group, knee: THREE.Group) => void
+  bind: (hip: THREE.Group, knee: THREE.Group, fetlock: THREE.Group) => void
 }) {
   const hip = useRef<THREE.Group>(null)
   const knee = useRef<THREE.Group>(null)
+  const fetlock = useRef<THREE.Group>(null)
   const bound = useRef(false)
 
   useFrame(() => {
-    if (!bound.current && hip.current && knee.current) {
-      bind(hip.current, knee.current)
+    if (!bound.current && hip.current && knee.current && fetlock.current) {
+      bind(hip.current, knee.current, fetlock.current)
       bound.current = true
     }
   })
 
-  const hipY = hind ? 0.62 : 0.64
-  const upperLen = hind ? 0.34 : 0.32
-  const lowerLen = 0.3
+  const hipY = hind ? 0.66 : 0.68
+  const upperLen = hind ? 0.36 : 0.34
+  const lowerLen = 0.28
+  const upperR = hind ? 0.055 : 0.048
 
   return (
-    <group ref={hip} position={[side * 0.14, hipY, z]}>
+    <group ref={hip} position={[side * 0.13, hipY, z]}>
       <mesh castShadow position={[0, -upperLen * 0.5, 0]}>
-        <boxGeometry args={[0.1, upperLen, 0.12]} />
-        <meshStandardMaterial color={coat} roughness={0.82} />
+        <capsuleGeometry args={[upperR, upperLen * 0.72, 4, 8]} />
+        <meshStandardMaterial color={coat} roughness={0.62} />
       </mesh>
       <group ref={knee} position={[0, -upperLen, 0]}>
-        <mesh castShadow position={[0, -lowerLen * 0.45, 0]}>
-          <boxGeometry args={[0.08, lowerLen * 0.9, 0.08]} />
-          <meshStandardMaterial color={coatDark} roughness={0.8} />
+        <mesh castShadow position={[0, -lowerLen * 0.42, 0]}>
+          <capsuleGeometry args={[0.032, lowerLen * 0.55, 4, 6]} />
+          <meshStandardMaterial color={coatDark} roughness={0.6} />
         </mesh>
-        <mesh castShadow position={[0, -lowerLen * 0.92, 0]}>
-          <boxGeometry args={[0.075, 0.1, 0.075]} />
-          <meshStandardMaterial color={sock} roughness={0.85} />
-        </mesh>
-        <mesh castShadow position={[0, -lowerLen - 0.04, 0.01]}>
-          <boxGeometry args={[0.09, 0.07, 0.12]} />
-          <meshStandardMaterial color={hoof} roughness={0.55} />
-        </mesh>
+        <group ref={fetlock} position={[0, -lowerLen * 0.85, 0]}>
+          <mesh castShadow position={[0, -0.05, 0]}>
+            <capsuleGeometry args={[0.028, 0.07, 4, 6]} />
+            <meshStandardMaterial color={sock} roughness={0.75} />
+          </mesh>
+          <mesh castShadow position={[0, -0.1, 0.02]} rotation={[0.35, 0, 0]}>
+            <boxGeometry args={[0.07, 0.045, 0.1]} />
+            <meshStandardMaterial color={hoof} roughness={0.5} />
+          </mesh>
+        </group>
       </group>
     </group>
   )
@@ -472,6 +507,8 @@ function applyLeg(leg: LegRefs | null, swing: number, knee: number) {
   if (!leg) return
   leg.hip.rotation.x = swing
   leg.knee.rotation.x = knee
+  // Fetlock breaks over in late stance (positive swing) and stays quiet in flight.
+  leg.fetlock.rotation.x = 0.08 + Math.max(0, swing) * 0.22
 }
 
 function plateLuminance(hex: string): number {

@@ -8,8 +8,6 @@ import type { RaceEntry } from '../data/fakeSeason'
 import './RaceView.css'
 import {
   DEFAULT_VIEW,
-  VIEW_AERIAL,
-  VIEW_CHASE,
   type ViewMode,
 } from '../components/race/cameraViews'
 
@@ -161,14 +159,10 @@ export function RaceView() {
 
   function onPick(id: string) {
     setFollowId((cur) => (cur === id ? null : id))
-    if (viewMode !== VIEW_CHASE && viewMode !== VIEW_AERIAL) {
-      setViewMode(VIEW_CHASE)
-    }
   }
 
   function onViewMode(mode: ViewMode) {
     setViewMode(mode)
-    if (mode !== VIEW_CHASE && mode !== VIEW_AERIAL) setFollowId(null)
     setHomeNonce((n) => n + 1)
   }
 
