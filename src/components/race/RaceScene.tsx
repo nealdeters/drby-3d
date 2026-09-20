@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, type MutableRefObject } from 'react'
+import { memo, useEffect, useMemo, useRef, Suspense, type MutableRefObject } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { Environment, Sky } from '@react-three/drei'
 import * as THREE from 'three'
@@ -333,7 +333,9 @@ function RacingField({
     <>
       {list.map((horse, i) => (
         <group key={horse.id}>
-          <HorseMesh horse={horse} index={i} fieldRef={fieldRef} onPick={onPick} selected={followId === horse.id} />
+          <Suspense fallback={null}>
+            <HorseMesh horse={horse} index={i} fieldRef={fieldRef} onPick={onPick} selected={followId === horse.id} />
+          </Suspense>
           <Kickup horseId={horse.id} index={i} fieldRef={fieldRef} surface={surface} />
         </group>
       ))}
