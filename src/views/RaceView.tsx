@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { RaceHUD } from '../components/race/RaceHUD'
+import { LaneDebugPanel } from '../components/race/LaneDebugPanel'
 import { ResultsBoard } from '../components/race/ResultsBoard'
 import { RaceScene } from '../components/race/RaceScene'
 import { useLiveData } from '../context/LiveDataContext'
@@ -212,6 +213,7 @@ export function RaceView() {
           surface={trackSurface}
           progressRef={feed.progressRef}
           laneRef={feed.laneRef}
+          lanePositionRef={feed.lanePositionRef}
           raceId={shownRace?.id ?? null}
           viewMode={viewMode}
           followId={followId}
@@ -219,6 +221,11 @@ export function RaceView() {
           onPick={onPick}
         />
       </div>
+      <LaneDebugPanel
+        horses={horses}
+        laneDecisionRef={feed.laneDecisionRef}
+        laneChangeRef={feed.laneChangeRef}
+      />
       <RaceHUD
         mode={season.mode}
         feedConnected={feed.feedConnected}

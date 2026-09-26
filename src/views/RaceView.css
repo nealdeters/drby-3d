@@ -21,3 +21,38 @@
   width: 100% !important;
   height: 100% !important;
 }
+
+.lane-debug {
+  position: absolute;
+  z-index: 20;
+  top: 5.5rem;
+  right: 1rem;
+  width: min(25rem, calc(100vw - 2rem));
+  max-height: min(70vh, 36rem);
+  overflow: auto;
+  padding: 0.65rem 0.75rem;
+  color: #f8f2e5;
+  background: rgba(12, 22, 31, 0.9);
+  border: 1px solid rgba(201, 162, 39, 0.7);
+  border-radius: 0.35rem;
+  font: 0.68rem/1.35 ui-monospace, SFMono-Regular, Menlo, monospace;
+  pointer-events: none;
+}
+
+.lane-debug__title {
+  margin-bottom: 0.4rem;
+  color: #e8c97a;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.lane-debug__row {
+  display: grid;
+  gap: 0.08rem;
+  padding: 0.35rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.lane-debug__row strong { color: #fff; }
+.lane-debug__row span:nth-child(3) { color: #e8c97a; }

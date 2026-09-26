@@ -13,8 +13,14 @@ export type LiveFeedState = {
   elapsed: number
   /** Overall race progress 0–1 per racer (from progressMap) — mutated in place for R3F */
   progressRef: MutableRefObject<Record<string, number>>
-  /** Lane 1–n per racer */
+  /** Committed target lane 1–n per racer. */
   laneRef: MutableRefObject<Record<string, number>>
+  /** Continuous authoritative lane position (fractional lane number). */
+  lanePositionRef: MutableRefObject<Record<string, number>>
+  /** Latest explicit traffic decision, for rendering/debug instrumentation. */
+  laneDecisionRef: MutableRefObject<Record<string, NonNullable<LiveRacer['laneDecision']>>>
+  /** Current transition metadata from the simulator. */
+  laneChangeRef: MutableRefObject<Record<string, NonNullable<LiveRacer['laneChange']>>>
   /**
    * Finish order (racer ids) as horses cross the wire — mutated in place.
    * Once an id is appended it never moves; still-racing horses fill remaining places.
@@ -108,6 +114,9 @@ export function useLiveRace({
 }: Options): LiveFeedState {
   const progressRef = useRef<Record<string, number>>({})
   const laneRef = useRef<Record<string, number>>({})
+  const lanePositionRef = useRef<Record<string, number>>({})
+  const laneDecisionRef = useRef<Record<string, NonNullable<LiveRacer['laneDecision']>>>({})
+  const laneChangeRef = useRef<Record<string, NonNullable<LiveRacer['laneChange']>>>({})
   const finishOrderRef = useRef<string[]>([])
   const [feedConnected, setFeedConnected] = useState(false)
   const [isRacing, setIsRacing] = useState(false)
@@ -137,6 +146,15 @@ export function useLiveRace({
       if (typeof r.lane === 'number' && r.lane > 0) {
         laneRef.current[r.id] = r.lane
       }
+      if (typeof r.lanePosition === 'number' && Number.isFinite(r.lanePosition) && r.lanePosition > 0) {
+        lanePositionRef.current[r.id] = r.lanePosition
+      } else if (typeof r.lane === 'number' && r.lane > 0 && lanePositionRef.current[r.id] === undefined) {
+        lanePositionRef.current[r.id] = r.lane
+      }
+      if (r.laneDecision) laneDecisionRef.current[r.id] = r.laneDecision
+      else delete laneDecisionRef.current[r.id]
+      if (r.laneChange) laneChangeRef.current[r.id] = r.laneChange
+      else delete laneChangeRef.current[r.id]
     }
   }, [])
 
@@ -145,6 +163,14 @@ export function useLiveRace({
     for (let i = 0; i < withLanes.length; i++) {
       const r = withLanes[i]
       laneRef.current[r.id] = r.lane > 0 ? r.lane : i + 1
+      lanePositionRef.current[r.id] =
+        typeof r.lanePosition === 'number' && Number.isFinite(r.lanePosition) && r.lanePosition > 0
+          ? r.lanePosition
+          : laneRef.current[r.id]
+      if (r.laneDecision) laneDecisionRef.current[r.id] = r.laneDecision
+      else delete laneDecisionRef.current[r.id]
+      if (r.laneChange) laneChangeRef.current[r.id] = r.laneChange
+      else delete laneChangeRef.current[r.id]
       if (!(r.id in progressRef.current)) {
         progressRef.current[r.id] = 0
       }
@@ -176,6 +202,9 @@ export function useLiveRace({
       for (const id of Object.keys(progressRef.current)) {
         progressRef.current[id] = 0
       }
+      lanePositionRef.current = {}
+      laneDecisionRef.current = {}
+      laneChangeRef.current = {}
     }
   }, [raceId])
 
@@ -218,14 +247,9 @@ export function useLiveRace({
         }
       }
 
-      // Lane updates only — do NOT setRacers on progress ticks
-      if (update.racers) {
-        for (const r of update.racers) {
-          if (typeof r.lane === 'number' && r.lane > 0) {
-            laneRef.current[r.id] = r.lane
-          }
-        }
-      }
+      // Lane/traffic updates are mutable so the canvas can consume them every frame
+      // without React re-rendering the WebGL tree at bus frequency.
+      if (update.racers) applyLaneProgressFromList(update.racers, false)
 
       if (update.type === 'started') {
         // A late/replayed "started" after we are already rolling must not zero the pack
@@ -445,6 +469,9 @@ export function useLiveRace({
     elapsed,
     progressRef,
     laneRef,
+    lanePositionRef,
+    laneDecisionRef,
+    laneChangeRef,
     finishOrderRef,
     racers,
   }

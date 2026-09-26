@@ -32,3 +32,12 @@ test('demo racing line stays biased toward the inside rail', () => {
   assert.ok(laneToRadial(1, 8) < laneToRadial(4, 8))
   assert.ok(laneToRadial(1, 8) <= -0.8)
 })
+
+test('fractional server lanePosition is rendered between adjacent racing lines', () => {
+  const inner = laneToRadial(1, 8)
+  const halfway = laneToRadial(1.5, 8)
+  const next = laneToRadial(2, 8)
+  assert.ok(inner < halfway)
+  assert.ok(halfway < next)
+  assert.ok(Math.abs(halfway - (inner + next) / 2) < 1e-12)
+})

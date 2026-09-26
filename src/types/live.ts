@@ -17,6 +17,29 @@ export interface LiveRacer {
   consistency: number
   staminaRecovery: number
   lane: number
+  /** Authoritative continuous lane position from the race simulator (1 = rail). */
+  lanePosition?: number
+  laneTarget?: number
+  laneChange?: {
+    from?: number
+    to?: number
+    progress?: number
+    reason?: string
+    startedAtTick?: number
+  } | null
+  laneDecision?: {
+    currentLane?: number
+    targetLane?: number
+    blockerId?: string | null
+    targetSpaceAvailable?: boolean
+    nearbyHorses?: string[]
+    scores?: Record<string, number | null>
+    insideLineAdvantage?: number
+    decision?: 'hold' | 'move'
+    reason?: string
+    evaluatedAtTick?: number
+  } | null
+  passingTargetId?: string | null
   progress: number
   laps: number
   totalDistance: number

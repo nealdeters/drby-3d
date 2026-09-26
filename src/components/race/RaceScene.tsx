@@ -39,6 +39,8 @@ type FieldProps = {
   trackLaps: number
   progressRef?: MutableRefObject<Record<string, number>>
   laneRef?: MutableRefObject<Record<string, number>>
+  /** Continuous lane position from the simulator (fractional lane number). */
+  lanePositionRef?: MutableRefObject<Record<string, number>>
   /** Current live race id — reset motion when it changes */
   raceId?: string | null
   surface?: TrackSurface
@@ -63,6 +65,7 @@ function RacingField({
   trackLaps,
   progressRef,
   laneRef,
+  lanePositionRef,
   raceId,
   surface = 'dirt',
   followId = null,
@@ -83,6 +86,11 @@ function RacingField({
   // Freeze lap mapping once the pack is off the gate so a roster refresh cannot wrap them.
   const lockedLapsRef = useRef<number | null>(null)
   const raceIdRef = useRef<string | null>(raceId ?? null)
+  const traceEnabledRef = useRef(false)
+
+  useEffect(() => {
+    traceEnabledRef.current = new URLSearchParams(window.location.search).get('debug') === '1'
+  }, [])
 
   // New race identity: park on the wire and drop leftover lastOverall from the previous race.
   useEffect(() => {
@@ -114,7 +122,7 @@ function RacingField({
         const s = fieldRef.current[i]
         if (!s) return
         s.id = h.id
-        const lane = laneRef?.current[h.id] ?? i + 1
+        const lane = lanePositionRef?.current[h.id] ?? laneRef?.current[h.id] ?? i + 1
         s.radial = laneToRadial(lane, horses.length)
       })
       return
@@ -127,7 +135,7 @@ function RacingField({
     horses.forEach((h, i) => {
       const s = next[i]
       if (!s) return
-      const lane = laneRef?.current[h.id] ?? i + 1
+      const lane = lanePositionRef?.current[h.id] ?? laneRef?.current[h.id] ?? i + 1
       s.id = h.id
       s.radial = laneToRadial(lane, horses.length)
       const prev = prevById.get(h.id)
@@ -144,7 +152,7 @@ function RacingField({
       }
     })
     fieldRef.current = next
-  }, [horses, laneRef, liveFeed])
+  }, [horses, laneRef, lanePositionRef, liveFeed])
 
   // On race start: park pack on the wire in lanes (no stagger, no ease-in delay)
   useEffect(() => {
@@ -163,7 +171,7 @@ function RacingField({
           s.progress = GATE_OVAL
           s.pace = 0
         }
-        const lane = laneRef?.current[h.id] ?? i + 1
+        const lane = lanePositionRef?.current[h.id] ?? laneRef?.current[h.id] ?? i + 1
         s.radial = laneToRadial(lane, horses.length)
       })
     }
@@ -172,7 +180,7 @@ function RacingField({
       lockedLapsRef.current = null
     }
     wasRacing.current = isRacing
-  }, [liveFeed, isRacing, horses, laneRef, trackLaps])
+  }, [liveFeed, isRacing, horses, laneRef, lanePositionRef, trackLaps])
 
   useFrame((_, dt) => {
     const clamped = Math.min(dt, 0.05)
@@ -200,7 +208,7 @@ function RacingField({
           s.progress = GATE_OVAL
           s.pace = 0
           clearLiveMotion(s)
-          const lane = laneRef?.current[h.id] ?? i + 1
+          const lane = lanePositionRef?.current[h.id] ?? laneRef?.current[h.id] ?? i + 1
           s.radial = laneToRadial(lane, horses.length)
         })
       } else if (!progressRef) {
@@ -220,7 +228,7 @@ function RacingField({
       horses.forEach((h, i) => {
         const s = states[i]
         if (!s) return
-        const lane = laneRef?.current[h.id] ?? i + 1
+        const lane = lanePositionRef?.current[h.id] ?? laneRef?.current[h.id] ?? i + 1
         const targetRadial = laneToRadial(lane, horses.length)
         // The scheduler owns collision-safe lane choice. The 3D client follows
         // that authoritative lane over a short transition instead of snapping.
@@ -279,6 +287,24 @@ function RacingField({
       }
     } else {
       stepField(states, clamped, 1 / 30)
+    }
+
+    if (traceEnabledRef.current) {
+      const debugGlobal = globalThis as typeof globalThis & {
+        __DRBY3D_RACE_DEBUG__?: {
+          frameCount: number
+          horses: Array<{ id?: string; progress: number; radial: number; lanePosition?: number }>
+        }
+      }
+      const trace = debugGlobal.__DRBY3D_RACE_DEBUG__ ?? { frameCount: 0, horses: [] }
+      trace.frameCount += 1
+      trace.horses = states.map((s) => ({
+        id: s.id,
+        progress: s.progress,
+        radial: s.radial,
+        lanePosition: s.id ? lanePositionRef?.current[s.id] : undefined,
+      }))
+      debugGlobal.__DRBY3D_RACE_DEBUG__ = trace
     }
 
     // Publish pack / follow poses for RaceCamera
@@ -347,6 +373,8 @@ export type RaceSceneProps = {
   surface?: TrackSurface
   progressRef?: MutableRefObject<Record<string, number>>
   laneRef?: MutableRefObject<Record<string, number>>
+  /** Continuous lane position from the simulator (fractional lane number). */
+  lanePositionRef?: MutableRefObject<Record<string, number>>
   raceId?: string | null
   viewMode?: ViewMode
   followId?: string | null
@@ -362,6 +390,7 @@ export const RaceScene = memo(function RaceScene({
   surface = 'dirt',
   progressRef,
   laneRef,
+  lanePositionRef,
   raceId = null,
   viewMode = DEFAULT_VIEW,
   followId = null,
@@ -409,6 +438,7 @@ export const RaceScene = memo(function RaceScene({
         trackLaps={trackLaps}
         progressRef={progressRef}
         laneRef={laneRef}
+        lanePositionRef={lanePositionRef}
         raceId={raceId}
         surface={surface}
         followId={followId}
