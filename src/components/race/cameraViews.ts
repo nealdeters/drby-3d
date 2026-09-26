@@ -2,15 +2,17 @@ import { TRACK } from './trackMath'
 
 export const VIEW_AERIAL = 'aerial'
 export const VIEW_ON_TRACK = 'on-track'
+export const VIEW_CHASE = 'chase'
 
 export const VIEW_MODES = [
   { id: VIEW_AERIAL, label: 'Aerial' },
   { id: VIEW_ON_TRACK, label: 'On track' },
+  { id: VIEW_CHASE, label: 'Chase' },
 ] as const
 
 export type ViewMode = (typeof VIEW_MODES)[number]['id']
 
-/** Default opens On track (pack framing); Aerial remains available in the switcher. */
+/** On track already frames the pack well; other modes must not reuse it. */
 export const DEFAULT_VIEW: ViewMode = VIEW_ON_TRACK
 
 export const AERIAL_FOV = 50
@@ -21,6 +23,12 @@ export const FOLLOW_AERIAL_FOV = 50
 export const FOLLOW_AERIAL_HEIGHT = 58
 export const FOLLOW_AERIAL_TILT = 0.14
 export const FOLLOW_AERIAL_K = 0.04
+
+export const CHASE_FOV = 50
+export const CHASE_BACK = 11
+export const CHASE_HEIGHT = 3.8
+export const CHASE_SIDE = 2.6
+export const CHASE_LOOK = 6
 
 export const PACK_FOV = 42
 export const PACK_MAX_DIST = 90
@@ -62,6 +70,10 @@ export function aerialShot(opts: { aspect?: number; fov?: number; pad?: number; 
   }
 }
 
+/**
+ * High follow that tracks a horse without rotating with heading.
+ * Camera stays north-of-map (offset in +Z only) so turns never yaw the view.
+ */
 export function followAerialShot(target: Vec3 | null | undefined, opts: { height?: number; tilt?: number; fov?: number } = {}): Shot {
   const height = opts.height ?? FOLLOW_AERIAL_HEIGHT
   const tilt = Number.isFinite(opts.tilt) ? (opts.tilt as number) : FOLLOW_AERIAL_TILT
@@ -74,6 +86,40 @@ export function followAerialShot(target: Vec3 | null | undefined, opts: { height
     target: { x: tx, y: ty, z: tz },
     span: circuitBounds().span,
     dist: height,
+    fov,
+  }
+}
+
+/** Low 3/4 behind a single horse — not the pack camera. */
+export function chaseShot(
+  target: Vec3 | null | undefined,
+  forward: Vec3 | null | undefined = null,
+  opts: { back?: number; height?: number; side?: number; look?: number; fov?: number } = {},
+): Shot {
+  const back = opts.back ?? CHASE_BACK
+  const height = opts.height ?? CHASE_HEIGHT
+  const side = opts.side ?? CHASE_SIDE
+  const lookAhead = opts.look ?? CHASE_LOOK
+  const fov = opts.fov ?? CHASE_FOV
+  const tx = target?.x || 0
+  const ty = target?.y || 0
+  const tz = target?.z || 0
+  let fx = forward?.x ?? 0
+  let fz = forward?.z ?? 1
+  const fl = Math.hypot(fx, fz) || 1
+  fx /= fl
+  fz /= fl
+  const sx = -fz
+  const sz = fx
+  return {
+    pos: {
+      x: tx - fx * back + sx * side,
+      y: ty + height,
+      z: tz - fz * back + sz * side,
+    },
+    target: { x: tx + fx * lookAhead, y: ty + 0.45, z: tz + fz * lookAhead },
+    span: circuitBounds().span,
+    dist: Math.hypot(back, height),
     fov,
   }
 }
