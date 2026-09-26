@@ -160,10 +160,16 @@ export function RaceView() {
   const lastXY = useRef({ x: 0, y: 0 })
 
   function onPick(id: string) {
-    setFollowId((cur) => (cur === id ? null : id))
-    if (viewMode !== VIEW_CHASE && viewMode !== VIEW_AERIAL) {
-      setViewMode(VIEW_CHASE)
+    if (followId === id) {
+      setFollowId(null)
+      setViewMode(DEFAULT_VIEW)
+    } else {
+      setFollowId(id)
+      if (viewMode !== VIEW_CHASE && viewMode !== VIEW_AERIAL) {
+        setViewMode(VIEW_AERIAL)
+      }
     }
+    setHomeNonce((n) => n + 1)
   }
 
   function onViewMode(mode: ViewMode) {

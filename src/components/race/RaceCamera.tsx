@@ -4,21 +4,16 @@ import { OrbitControls } from '@react-three/drei'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import * as THREE from 'three'
 import { raceBridge } from './raceBridge'
+import { shotKind } from './cameraDirector'
 import {
-  AERIAL_FOV,
   DEFAULT_VIEW,
-  FOLLOW_AERIAL_FOV,
   FOLLOW_AERIAL_K,
-  FULL_FOV,
   PACK_FOV,
-  VIEW_AERIAL,
-  VIEW_CHASE,
-  VIEW_FULL,
-  VIEW_ON_TRACK,
   aerialShot,
+  VIEW_ON_TRACK,
+  chaseShot,
   dampPoint,
   followAerialShot,
-  fullTrackShot,
   packShot,
   type Vec3,
   type ViewMode,
@@ -26,7 +21,6 @@ import {
 
 type Props = {
   viewMode: ViewMode
-  followId: string | null
   homeNonce: number
 }
 
@@ -55,26 +49,26 @@ function applyShot(
   }
 }
 
-export function RaceCamera({ viewMode, followId, homeNonce }: Props) {
+export function RaceCamera({ viewMode, homeNonce }: Props) {
   const { camera, size } = useThree()
   const controls = useRef<OrbitControlsImpl>(null)
   const modeRef = useRef(viewMode || DEFAULT_VIEW)
   modeRef.current = viewMode || DEFAULT_VIEW
-  const followRef = useRef(followId)
-  followRef.current = followId
   const look = useMemo(() => new THREE.Vector3(), [])
   const desired = useMemo(() => new THREE.Vector3(), [])
   const desiredLook = useMemo(() => new THREE.Vector3(), [])
   const userHeld = useRef(false)
   const snap = useRef(true)
   const followSmooth = useRef<Vec3 | null>(null)
+  const lastKind = useRef('')
   const boot = useMemo(() => aerialShot({ aspect: 16 / 9 }), [])
 
   useEffect(() => {
     const cam = camera as THREE.PerspectiveCamera
     cam.near = 0.5
     cam.far = Math.max(420, boot.span * 5)
-    cam.fov = modeRef.current === VIEW_FULL ? FULL_FOV : modeRef.current === VIEW_AERIAL ? FOLLOW_AERIAL_FOV : PACK_FOV
+    const mode = modeRef.current
+    cam.fov = mode === VIEW_ON_TRACK ? PACK_FOV : 50
     cam.updateProjectionMatrix()
   }, [camera, boot.span, viewMode])
 
@@ -82,71 +76,60 @@ export function RaceCamera({ viewMode, followId, homeNonce }: Props) {
     userHeld.current = false
     snap.current = true
     followSmooth.current = null
+    lastKind.current = ''
   }, [homeNonce, viewMode])
 
   useFrame(() => {
     const cam = camera as THREE.PerspectiveCamera
     const mode = modeRef.current
     const aspect = size.width / Math.max(1, size.height)
-    const id = followRef.current
-    const tracking = Boolean(id && raceBridge.followOk)
-    const doSnap = snap.current
+    const kind = shotKind({ viewMode: mode })
+    const tracking = Boolean(raceBridge.followOk)
+    const doSnap = snap.current || lastKind.current !== kind
+    lastKind.current = kind
     const k = doSnap ? 1 : 0.14
     snap.current = false
 
-    if (mode === VIEW_FULL) {
+    if (kind === 'aerial') {
+      if (!tracking) {
+        if (controls.current) controls.current.enabled = true
+        if (userHeld.current) return
+        const shot = aerialShot({ aspect })
+        applyShot(cam, shot, desired, desiredLook, look, k, shot.span)
+        if (controls.current) controls.current.target.lerp(look, k)
+        return
+      }
       if (controls.current) controls.current.enabled = true
       if (userHeld.current) return
-      const shot = fullTrackShot({ aspect, fov: FULL_FOV })
-      applyShot(cam, shot, desired, desiredLook, look, k, shot.span)
-      if (controls.current) controls.current.target.lerp(look, k)
-      return
-    }
-
-    if (mode === VIEW_AERIAL && tracking) {
-      if (controls.current) controls.current.enabled = false
       const next = { x: raceBridge.followX, y: raceBridge.followY, z: raceBridge.followZ }
       followSmooth.current = doSnap ? next : dampPoint(followSmooth.current, next, FOLLOW_AERIAL_K)
       const shot = followAerialShot(followSmooth.current)
-      applyShot(cam, shot, desired, desiredLook, look, FOLLOW_AERIAL_K, shot.span)
-      if (controls.current) controls.current.target.lerp(look, FOLLOW_AERIAL_K)
+      const airK = doSnap ? 1 : FOLLOW_AERIAL_K
+      applyShot(cam, shot, desired, desiredLook, look, airK, shot.span)
+      if (controls.current) controls.current.target.lerp(look, airK)
       return
     }
 
-    if (mode === VIEW_AERIAL) {
+    if (kind === 'chase') {
+      if (!tracking) {
+        if (controls.current) controls.current.enabled = true
+        if (userHeld.current) return
+        const shot = aerialShot({ aspect })
+        applyShot(cam, shot, desired, desiredLook, look, k, shot.span)
+        return
+      }
       if (controls.current) controls.current.enabled = true
       if (userHeld.current) return
-      const shot = aerialShot({ aspect, fov: AERIAL_FOV })
-      applyShot(cam, shot, desired, desiredLook, look, k, shot.span)
-      if (controls.current) controls.current.target.lerp(look, k)
+      const shot = chaseShot(
+        { x: raceBridge.followX, y: raceBridge.followY, z: raceBridge.followZ },
+        { x: raceBridge.followHX, y: 0, z: raceBridge.followHZ },
+      )
+      applyShot(cam, shot, desired, desiredLook, look, doSnap ? 1 : 0.12, shot.span)
+      if (controls.current) controls.current.target.lerp(look, doSnap ? 1 : 0.12)
       return
     }
 
-    if (tracking && (mode === VIEW_CHASE || Boolean(id))) {
-      if (controls.current) controls.current.enabled = false
-      const px = raceBridge.followX
-      const py = raceBridge.followY
-      const pz = raceBridge.followZ
-      const hx = raceBridge.followHX
-      const hz = raceBridge.followHZ
-      const len = Math.hypot(hx, hz) || 1
-      const fx = hx / len
-      const fz = hz / len
-      const sx = -fz
-      const sz = fx
-      if (Math.abs(cam.fov - PACK_FOV) > 0.2) {
-        cam.fov = PACK_FOV
-        cam.updateProjectionMatrix()
-      }
-      desired.set(px - fx * 9 + sx * 3.2, py + 3.4, pz - fz * 9 + sz * 3.2)
-      look.set(px + fx * 5.5, py + 0.35, pz + fz * 5.5)
-      cam.position.lerp(desired, 0.12)
-      cam.lookAt(look)
-      if (controls.current) controls.current.target.lerp(look, 0.12)
-      return
-    }
-
-    if (mode === VIEW_ON_TRACK) {
+    if (kind === 'on-track') {
       if (controls.current) controls.current.enabled = true
       if (userHeld.current) return
       const pts = raceBridge.packPoints
@@ -154,10 +137,6 @@ export function RaceCamera({ viewMode, followId, homeNonce }: Props) {
         const shot = aerialShot({ aspect })
         applyShot(cam, shot, desired, desiredLook, look, k, shot.span)
         return
-      }
-      if (Math.abs(cam.fov - PACK_FOV) > 0.2) {
-        cam.fov = PACK_FOV
-        cam.updateProjectionMatrix()
       }
       const shot = packShot(pts, {
         forward: { x: raceBridge.headingX, y: 0, z: raceBridge.headingZ },
@@ -168,16 +147,8 @@ export function RaceCamera({ viewMode, followId, homeNonce }: Props) {
       if (controls.current) controls.current.target.lerp(look, k)
       return
     }
-
-    // Fallback: aerial overview
-    if (controls.current) controls.current.enabled = true
-    if (userHeld.current) return
-    const shot = aerialShot({ aspect })
-    applyShot(cam, shot, desired, desiredLook, look, k, shot.span)
-    if (controls.current) controls.current.target.lerp(look, k)
   })
 
-  // Seed camera once
   useEffect(() => {
     const cam = camera as THREE.PerspectiveCamera
     const shot = aerialShot({ aspect: size.width / Math.max(1, size.height) })
@@ -202,12 +173,8 @@ export function RaceCamera({ viewMode, followId, homeNonce }: Props) {
       enableDamping
       dampingFactor={0.08}
       onStart={() => {
-        const mode = modeRef.current
-        if (mode === VIEW_CHASE || (mode === VIEW_AERIAL && followRef.current)) return
-        if (mode === VIEW_FULL || mode === VIEW_AERIAL || mode === VIEW_ON_TRACK) userHeld.current = true
+        userHeld.current = true
       }}
     />
   )
 }
-
-// silence unused gl lint if any

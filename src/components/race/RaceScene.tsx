@@ -1,7 +1,6 @@
-import { memo, useEffect, useMemo, useRef, type MutableRefObject } from 'react'
+import { memo, useEffect, useMemo, useRef, Suspense, type MutableRefObject } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { Environment, Sky } from '@react-three/drei'
-import * as THREE from 'three'
 import type { Horse } from '../../data/fakeSeason'
 import { HorseMesh } from './Horse'
 import { Kickup } from './Kickup'
@@ -25,14 +24,8 @@ import {
 } from './trackMath'
 import { RaceCamera } from './RaceCamera'
 import { raceBridge } from './raceBridge'
-import { DEFAULT_VIEW, type ViewMode } from './cameraViews'
-
-function laneToRadial(lane: number, count: number): number {
-  const L = lane > 0 ? lane : 1
-  const max = Math.max(count, 8)
-  // lane 1 = inside (−), higher lanes = outside (+)
-  return THREE.MathUtils.clamp(((L - 1) / Math.max(max - 1, 1)) * 1.7 - 0.85, -0.92, 0.92)
-}
+import { laneToRadial, moveRadialToward } from './laneMotion'
+import { DEFAULT_VIEW, VIEW_AERIAL, VIEW_CHASE, type ViewMode } from './cameraViews'
 
 export { overallToOvalProgress, GATE_OVAL }
 
@@ -50,6 +43,7 @@ type FieldProps = {
   raceId?: string | null
   surface?: TrackSurface
   followId?: string | null
+  viewMode?: ViewMode
   onPick?: (id: string) => void
 }
 
@@ -72,6 +66,7 @@ function RacingField({
   raceId,
   surface = 'dirt',
   followId = null,
+  viewMode = DEFAULT_VIEW,
   onPick,
 }: FieldProps) {
   const fieldRef = useRef<HorseSimState[]>(
@@ -208,12 +203,9 @@ function RacingField({
           const lane = laneRef?.current[h.id] ?? i + 1
           s.radial = laneToRadial(lane, horses.length)
         })
-        return
-      }
-      if (!progressRef) {
+      } else if (!progressRef) {
         // Keep last pose — never gate-warp just because the map ref is missing a frame.
-        return
-      }
+      } else {
 
       raceAgeRef.current += clamped
       const now = performance.now()
@@ -229,7 +221,10 @@ function RacingField({
         const s = states[i]
         if (!s) return
         const lane = laneRef?.current[h.id] ?? i + 1
-        s.radial = laneToRadial(lane, horses.length)
+        const targetRadial = laneToRadial(lane, horses.length)
+        // The scheduler owns collision-safe lane choice. The 3D client follows
+        // that authoritative lane over a short transition instead of snapping.
+        s.radial = moveRadialToward(s.radial, targetRadial, clamped)
         const sample = readOverall(progressRef.current, h.id)
         if (typeof sample === 'number') {
           const prevOverall = s.lastOverall
@@ -281,6 +276,7 @@ function RacingField({
           s.pace = Math.max(0.85, Math.min(1.35, 0.9 + delta * 8))
         }
       })
+      }
     } else {
       stepField(states, clamped, 1 / 30)
     }
@@ -308,20 +304,19 @@ function RacingField({
     }
     raceBridge.packPoints = pts
     raceBridge.packTangents = tans
-    if (followId) {
-      const sub = states.find((s) => s.id === followId)
-      if (sub) {
-        const fp = trackPoint(sub.progress, sub.radial)
-        const ft = trackTangent(sub.progress, sub.radial)
-        raceBridge.followOk = true
-        raceBridge.followX = fp.x
-        raceBridge.followY = 0.7
-        raceBridge.followZ = fp.z
-        raceBridge.followHX = ft.x
-        raceBridge.followHZ = ft.z
-      } else {
-        raceBridge.followOk = false
-      }
+    const wantFollow = Boolean(followId) || viewMode === VIEW_AERIAL || viewMode === VIEW_CHASE
+    const sub = wantFollow
+      ? (followId ? states.find((st) => st.id === followId) : lead) || lead
+      : null
+    if (sub) {
+      const fp = trackPoint(sub.progress, sub.radial)
+      const ft = trackTangent(sub.progress, sub.radial)
+      raceBridge.followOk = true
+      raceBridge.followX = fp.x
+      raceBridge.followY = 0.7
+      raceBridge.followZ = fp.z
+      raceBridge.followHX = ft.x
+      raceBridge.followHZ = ft.z
     } else {
       raceBridge.followOk = false
     }
@@ -333,7 +328,9 @@ function RacingField({
     <>
       {list.map((horse, i) => (
         <group key={horse.id}>
-          <HorseMesh horse={horse} index={i} fieldRef={fieldRef} onPick={onPick} selected={followId === horse.id} />
+          <Suspense fallback={null}>
+            <HorseMesh horse={horse} index={i} fieldRef={fieldRef} onPick={onPick} selected={followId === horse.id} />
+          </Suspense>
           <Kickup horseId={horse.id} index={i} fieldRef={fieldRef} surface={surface} />
         </group>
       ))}
@@ -376,7 +373,7 @@ export const RaceScene = memo(function RaceScene({
       <color attach="background" args={['#87b8e8']} />
       {/* Soft daylight haze — starts past the far rail so the oval stays clear */}
       <fog attach="fog" args={['#c8dcf0', 140, 320]} />
-      <RaceCamera viewMode={viewMode} followId={followId} homeNonce={homeNonce} />
+      <RaceCamera viewMode={viewMode} homeNonce={homeNonce} />
       <Sky
         distance={450000}
         sunPosition={[80, 35, 40]}
@@ -415,6 +412,7 @@ export const RaceScene = memo(function RaceScene({
         raceId={raceId}
         surface={surface}
         followId={followId}
+        viewMode={viewMode}
         onPick={onPick}
       />
       <Environment preset="sunset" environmentIntensity={0.35} />
