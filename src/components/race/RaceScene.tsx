@@ -1,7 +1,6 @@
 import { memo, useEffect, useMemo, useRef, Suspense, type MutableRefObject } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { Environment, Sky } from '@react-three/drei'
-import * as THREE from 'three'
 import type { Horse } from '../../data/fakeSeason'
 import { HorseMesh } from './Horse'
 import { Kickup } from './Kickup'
@@ -25,14 +24,8 @@ import {
 } from './trackMath'
 import { RaceCamera } from './RaceCamera'
 import { raceBridge } from './raceBridge'
+import { laneToRadial, moveRadialToward } from './laneMotion'
 import { DEFAULT_VIEW, VIEW_AERIAL, VIEW_CHASE, type ViewMode } from './cameraViews'
-
-function laneToRadial(lane: number, count: number): number {
-  const L = lane > 0 ? lane : 1
-  const max = Math.max(count, 8)
-  // lane 1 = inside (−), higher lanes = outside (+)
-  return THREE.MathUtils.clamp(((L - 1) / Math.max(max - 1, 1)) * 1.7 - 0.85, -0.92, 0.92)
-}
 
 export { overallToOvalProgress, GATE_OVAL }
 
@@ -228,7 +221,10 @@ function RacingField({
         const s = states[i]
         if (!s) return
         const lane = laneRef?.current[h.id] ?? i + 1
-        s.radial = laneToRadial(lane, horses.length)
+        const targetRadial = laneToRadial(lane, horses.length)
+        // The scheduler owns collision-safe lane choice. The 3D client follows
+        // that authoritative lane over a short transition instead of snapping.
+        s.radial = moveRadialToward(s.radial, targetRadial, clamped)
         const sample = readOverall(progressRef.current, h.id)
         if (typeof sample === 'number') {
           const prevOverall = s.lastOverall
