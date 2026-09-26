@@ -12,11 +12,12 @@ import {
   compressOverallToPack,
   createFieldState,
   crossedFinish,
+  continuePastFinish,
+  stopAfterRace,
   followOvalToward,
   fracProgress,
   overallRateFromSamples,
   overallToOvalProgress,
-  parkAtFinish,
   stepField,
   trackPoint,
   trackTangent,
@@ -25,9 +26,14 @@ import {
 import { RaceCamera } from './RaceCamera'
 import { raceBridge } from './raceBridge'
 import { laneToRadial, moveRadialToward } from './laneMotion'
+import { chooseTrafficLanes } from './trafficLanePlanner'
 import { DEFAULT_VIEW, VIEW_AERIAL, VIEW_CHASE, type ViewMode } from './cameraViews'
 
 export { overallToOvalProgress, GATE_OVAL }
+
+function nowForFrame(): number {
+  return typeof performance !== 'undefined' ? performance.now() : Date.now()
+}
 
 type FieldProps = {
   horses: Horse[]
@@ -41,6 +47,8 @@ type FieldProps = {
   laneRef?: MutableRefObject<Record<string, number>>
   /** Continuous lane position from the simulator (fractional lane number). */
   lanePositionRef?: MutableRefObject<Record<string, number>>
+  /** Active authoritative transitions; tactical fallback never overrides these. */
+  laneChangeRef?: MutableRefObject<Record<string, { from?: number; to?: number; progress?: number }>>
   /** Current live race id — reset motion when it changes */
   raceId?: string | null
   surface?: TrackSurface
@@ -66,6 +74,7 @@ function RacingField({
   progressRef,
   laneRef,
   lanePositionRef,
+  laneChangeRef,
   raceId,
   surface = 'dirt',
   followId = null,
@@ -87,6 +96,13 @@ function RacingField({
   const lockedLapsRef = useRef<number | null>(null)
   const raceIdRef = useRef<string | null>(raceId ?? null)
   const traceEnabledRef = useRef(false)
+  /** Display target used only when an old feed supplies fixed lanes without motion. */
+  const tacticalLaneRef = useRef<Record<string, number>>({})
+  const lastServerLaneRef = useRef<Record<string, number>>({})
+  const serverMotionCountRef = useRef(0)
+  const tacticalModeRef = useRef(false)
+  const nextTacticalDecisionAtRef = useRef(0)
+  const tacticalDecisionRef = useRef<Record<string, ReturnType<typeof chooseTrafficLanes>[number]>>({})
 
   useEffect(() => {
     traceEnabledRef.current = new URLSearchParams(window.location.search).get('debug') === '1'
@@ -100,6 +116,12 @@ function RacingField({
     raceAgeRef.current = 0
     lockedLapsRef.current = null
     wasRacing.current = false
+    tacticalLaneRef.current = {}
+    lastServerLaneRef.current = {}
+    serverMotionCountRef.current = 0
+    tacticalModeRef.current = false
+    nextTacticalDecisionAtRef.current = 0
+    tacticalDecisionRef.current = {}
     for (const s of fieldRef.current) {
       clearLiveMotion(s)
       if (liveFeed) {
@@ -190,6 +212,48 @@ function RacingField({
     }
     const laps = (lockedLapsRef.current ?? lapsRef.current) > 0 ? (lockedLapsRef.current ?? lapsRef.current) : 1
 
+    // Some older race snapshots carry only a fixed integer lane. Do not let
+    // that erase the positional racing behavior: after a short observation
+    // window, run a deterministic traffic planner in the renderer until the
+    // authoritative feed demonstrates real lateral motion. This is a visual
+    // fallback, not a replacement for server lane decisions.
+    if (liveFeed && isRacing) {
+      const serverLanes = lanePositionRef?.current ?? {}
+      for (const h of horses) {
+        const serverLane = serverLanes[h.id]
+        if (typeof serverLane !== 'number' || !Number.isFinite(serverLane)) continue
+        const previous = lastServerLaneRef.current[h.id]
+        if (previous !== undefined && Math.abs(serverLane - previous) > 0.04) {
+          serverMotionCountRef.current += 1
+        }
+        lastServerLaneRef.current[h.id] = serverLane
+        if (tacticalLaneRef.current[h.id] === undefined) tacticalLaneRef.current[h.id] = serverLane
+      }
+      // Three real transitions are enough evidence that the backend is driving
+      // this race. Otherwise fixed-lane feeds get visible traffic behavior.
+      tacticalModeRef.current =
+        raceAgeRef.current > 1.25 && serverMotionCountRef.current < 3
+      if (tacticalModeRef.current && nowForFrame() >= nextTacticalDecisionAtRef.current) {
+        const snapshots = horses.map((h, i) => {
+          const state = states.find((candidate) => candidate.id === h.id) ?? states[i]
+          const serverLane = serverLanes[h.id] ?? i + 1
+          return {
+            id: h.id,
+            progress: state?.lastOverall ?? readOverall(progressRef?.current, h.id) ?? 0,
+            lane: tacticalLaneRef.current[h.id] ?? serverLane,
+            speed: state?.overallRate ?? 0.032,
+            strategy: h.speedBias >= 1.03 ? 'aggressive' as const : h.speedBias <= 0.98 ? 'conservative' as const : 'balanced' as const,
+          }
+        })
+        const planned = chooseTrafficLanes(snapshots, Math.max(8, horses.length))
+        tacticalDecisionRef.current = Object.fromEntries(planned.map((decision) => [decision.horseId, decision]))
+        for (const decision of planned) {
+          tacticalLaneRef.current[decision.horseId] = decision.targetLane
+        }
+        nextTacticalDecisionAtRef.current = nowForFrame() + 0.55
+      }
+    }
+
     if (liveFeed) {
       const followRate = 14
       const holdGate = !isRacing && horses.every((h) => {
@@ -228,11 +292,16 @@ function RacingField({
       horses.forEach((h, i) => {
         const s = states[i]
         if (!s) return
-        const lane = lanePositionRef?.current[h.id] ?? laneRef?.current[h.id] ?? i + 1
+        const serverLane = lanePositionRef?.current[h.id] ?? laneRef?.current[h.id] ?? i + 1
+        const authoritativeChange = laneChangeRef?.current[h.id]
+        const lane =
+          tacticalModeRef.current && !authoritativeChange
+            ? (tacticalLaneRef.current[h.id] ?? serverLane)
+            : serverLane
         const targetRadial = laneToRadial(lane, horses.length)
-        // The scheduler owns collision-safe lane choice. The 3D client follows
-        // that authoritative lane over a short transition instead of snapping.
-        s.radial = moveRadialToward(s.radial, targetRadial, clamped)
+        // Follow a continuous server lane when available; fixed-lane feeds use
+        // the traffic planner above. Both paths use the same slow lateral easing.
+        s.radial = moveRadialToward(s.radial, targetRadial, clamped, 4.5)
         const sample = readOverall(progressRef.current, h.id)
         if (typeof sample === 'number') {
           const prevOverall = s.lastOverall
@@ -256,13 +325,16 @@ function RacingField({
           return
         }
         if (crossedFinish(s.lastOverall)) {
-          parkAtFinish(s, clamped, followRate)
+          // A finisher keeps the same forward stride while other horses are
+          // still racing. The race-level finished packet is the only stop.
+          if (isRacing) continuePastFinish(s, clamped, laps, true)
+          else stopAfterRace(s)
           return
         }
-        // Race over: every remaining horse stops the stride (no in-place gallop).
+        // Race-level completion stops the remaining stride where it is; never
+        // warp every horse back to the finish wire.
         if (!isRacing) {
-          s.pace = 0
-          s.overallRate = 0
+          stopAfterRace(s)
           return
         }
         let overall = coastOverall(
@@ -272,7 +344,7 @@ function RacingField({
           s.lastOverall > 0.001 && s.lastOverall < 0.999,
         )
         if (crossedFinish(overall)) {
-          parkAtFinish(s, clamped, followRate)
+          continuePastFinish(s, clamped, laps, true)
           return
         }
         overall = compressOverallToPack(overall, leaderOverall, laps)
@@ -293,16 +365,21 @@ function RacingField({
       const debugGlobal = globalThis as typeof globalThis & {
         __DRBY3D_RACE_DEBUG__?: {
           frameCount: number
-          horses: Array<{ id?: string; progress: number; radial: number; lanePosition?: number }>
+          tacticalMode?: boolean
+          tacticalDecisions?: Record<string, ReturnType<typeof chooseTrafficLanes>[number]>
+          horses: Array<{ id?: string; progress: number; radial: number; lanePosition?: number; finishCruising?: boolean }>
         }
       }
       const trace = debugGlobal.__DRBY3D_RACE_DEBUG__ ?? { frameCount: 0, horses: [] }
       trace.frameCount += 1
+      trace.tacticalMode = tacticalModeRef.current
+      trace.tacticalDecisions = tacticalDecisionRef.current
       trace.horses = states.map((s) => ({
         id: s.id,
         progress: s.progress,
         radial: s.radial,
         lanePosition: s.id ? lanePositionRef?.current[s.id] : undefined,
+        finishCruising: s.finishCruising,
       }))
       debugGlobal.__DRBY3D_RACE_DEBUG__ = trace
     }
@@ -375,6 +452,7 @@ export type RaceSceneProps = {
   laneRef?: MutableRefObject<Record<string, number>>
   /** Continuous lane position from the simulator (fractional lane number). */
   lanePositionRef?: MutableRefObject<Record<string, number>>
+  laneChangeRef?: MutableRefObject<Record<string, { from?: number; to?: number; progress?: number }>>
   raceId?: string | null
   viewMode?: ViewMode
   followId?: string | null
@@ -391,6 +469,7 @@ export const RaceScene = memo(function RaceScene({
   progressRef,
   laneRef,
   lanePositionRef,
+  laneChangeRef,
   raceId = null,
   viewMode = DEFAULT_VIEW,
   followId = null,
@@ -439,6 +518,7 @@ export const RaceScene = memo(function RaceScene({
         progressRef={progressRef}
         laneRef={laneRef}
         lanePositionRef={lanePositionRef}
+        laneChangeRef={laneChangeRef}
         raceId={raceId}
         surface={surface}
         followId={followId}

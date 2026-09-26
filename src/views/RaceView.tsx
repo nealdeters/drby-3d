@@ -214,6 +214,7 @@ export function RaceView() {
           progressRef={feed.progressRef}
           laneRef={feed.laneRef}
           lanePositionRef={feed.lanePositionRef}
+          laneChangeRef={feed.laneChangeRef}
           raceId={shownRace?.id ?? null}
           viewMode={viewMode}
           followId={followId}

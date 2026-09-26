@@ -10,7 +10,7 @@ export function laneToRadial(lane: number, horseCount: number): number {
 }
 
 /** Smooth a horse onto a newly selected lane without teleporting across the track. */
-export function moveRadialToward(current: number, target: number, deltaSeconds: number, rate = 10): number {
+export function moveRadialToward(current: number, target: number, deltaSeconds: number, rate = 4.5): number {
   if (!Number.isFinite(target)) return current
   const dt = Math.max(0, Number.isFinite(deltaSeconds) ? deltaSeconds : 0)
   const alpha = 1 - Math.exp(-Math.max(0, rate) * dt)

@@ -98,6 +98,10 @@ export type HorseSimState = {
   lastSampleAt?: number
   /** Overall (0–1) per second, from successive live samples */
   overallRate?: number
+  /** True after this horse crosses the wire while the rest of the field races on. */
+  finishCruising?: boolean
+  /** Pace captured at the wire so a finisher keeps the same stride. */
+  finishCruiseRate?: number
 }
 
 /** Finish / start wire on our oval (near stretch). */
@@ -209,11 +213,53 @@ export function clearLiveMotion(s: HorseSimState): void {
   s.lastOverall = undefined
   s.lastSampleAt = undefined
   s.overallRate = undefined
+  s.finishCruising = false
+  s.finishCruiseRate = undefined
 }
 
-/** Crossed the line: walk to the finish wire, then stand still (no gallop in place). */
+/** A live feed marks the individual horse finished at 1.0 while the field continues. */
 export function crossedFinish(overall: number | undefined): boolean {
   return typeof overall === 'number' && overall >= 0.999
+}
+
+/**
+ * Keep an individual finisher moving around the oval until the race-level
+ * `finished` event arrives. The rate is captured from the last live samples,
+ * so this is a continuation of the same stride rather than a new burst.
+ */
+export function continuePastFinish(
+  s: HorseSimState,
+  dt: number,
+  laps: number,
+  racing: boolean,
+): void {
+  if (!racing) {
+    s.pace = 0
+    s.overallRate = 0
+    return
+  }
+
+  if (!s.finishCruising) {
+    s.finishCruising = true
+    s.finishCruiseRate = THREE.MathUtils.clamp(s.overallRate ?? 0.032, 0.018, 0.12)
+    // Put the nose on the wire before continuing, without a visible snap.
+    const current = fracProgress(s.progress)
+    const toWire = ovalForwardDelta(current, GATE_OVAL)
+    if (toWire <= 0.03) {
+      s.progress += toWire
+    }
+  }
+
+  const rate = s.finishCruiseRate ?? 0.032
+  const lapRate = rate * Math.max(1, laps)
+  s.progress = advanceProgress(s.progress, Math.min(lapRate * Math.max(0, dt), MAX_OVAL_STEP))
+  s.pace = THREE.MathUtils.clamp(rate / 0.032, 0.75, 1.5)
+}
+
+/** Stop where a finisher is when the race-level finish arrives; do not gate-warp. */
+export function stopAfterRace(s: HorseSimState): void {
+  s.pace = 0
+  s.overallRate = 0
 }
 
 /** On the wire, or already past it (overshoot) — not still approaching. */
