@@ -27,3 +27,8 @@ test('moveRadialToward transitions toward a changed lane without teleporting', (
   assert.ok(settled > first)
   assert.ok(settled < 0.85)
 })
+
+test('demo racing line stays biased toward the inside rail', () => {
+  assert.ok(laneToRadial(1, 8) < laneToRadial(4, 8))
+  assert.ok(laneToRadial(1, 8) <= -0.8)
+})

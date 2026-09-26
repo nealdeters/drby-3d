@@ -9,7 +9,7 @@ type Props = {
   mode: DataMode
   feedConnected: boolean
   isRacing: boolean
-  /** Ably race elapsed ms — shown as Race time while racing */
+  /** Realtime race elapsed ms — shown as Race time while racing */
   elapsedMs?: number
   horses: Horse[]
   races: RaceEntry[]

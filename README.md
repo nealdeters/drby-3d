@@ -5,7 +5,7 @@ Middle-grandstand 3D race client for the DRBY league. Vite + React + TypeScript 
 ## Run
 
 ```bash
-cp .env.example .env.local   # set VITE_ABLY_API_KEY + VITE_API_KEY from drby-live
+cp .env.example .env.local   # set VITE_HOUSE_BUS_WS_URL + VITE_API_KEY
 npm install
 npm run dev
 ```
@@ -21,7 +21,7 @@ npm run preview
 
 | View | Notes |
 |------|--------|
-| **Race** | Full-viewport R3F Churchill oval; Ably live pack when connected |
+| **Race** | Full-viewport R3F Churchill oval; house-bus live pack when connected |
 | **TV** | Broadcast booth (`#/tv`): camera cuts, lower-thirds, same live feed as Race |
 | **Schedule** | Season card / race-day program table |
 | **Standings** | Points table with jersey swatches |
@@ -45,8 +45,8 @@ Flight hips do not lerp through the standing pose (that read as two carousel pol
 
 Same API as https://drby-live.netlify.app + drby_scheduler.
 
-Netlify (cheerful-sorbet-14faed): copy VITE_ABLY_API_KEY and VITE_API_KEY from drby-live site env into this site, optionally set VITE_API_BASE=https://drby-live.netlify.app, then redeploy. Do not invent or commit secrets.
+Netlify: set VITE_API_KEY and VITE_HOUSE_BUS_WS_URL to the reachable Centrifugo WebSocket endpoint, optionally set VITE_API_BASE=https://drby-live.netlify.app, then redeploy. The browser only receives a short-lived subscribe token from the token function; never put the Centrifugo API key in Vite.
 
-Without keys the HUD shows Demo (fakeSeason + local pack sim). With keys + healthy API it shows Live and drives horses from Ably race-update progressMap/racers.
+Rollback: set VITE_REALTIME_TRANSPORT=ably and VITE_ABLY_API_KEY. Without realtime/API keys the HUD shows Demo (fakeSeason + local pack sim).
 
 After a live finish, Race (`#/`) and TV (`#/tv`) keep that field on the wire for 30 seconds and show an official-order board (auto-clears). The next card does not gate-warp the pack until the hold ends.

@@ -11,7 +11,7 @@ import {
   type StandingRow,
   type Track,
 } from '../data/fakeSeason'
-import { ensureAblyConnected, hasAblyKeyConfigured, hasApiKeyConfigured } from '../services/apiClient'
+import { hasApiKeyConfigured } from '../services/apiClient'
 import { racesService } from '../services/racesService'
 import { tracksService } from '../services/tracksService'
 import type {
@@ -201,7 +201,7 @@ export type LiveSeasonState = {
   horseById: (id: string) => Horse | undefined
   trackById: (id: string) => Track | undefined
   refresh: () => Promise<void>
-  /** Locally mark a race completed so the next raceId is available for early Ably subscribe */
+  /** Locally mark a race completed so the next raceId is available for early realtime subscribe */
   markRaceCompleted: (raceId: string, resultIds?: string[]) => void
 }
 
@@ -329,12 +329,6 @@ export function useLiveSeason(): LiveSeasonState {
       console.warn('[useLiveSeason] soft refresh failed', err)
     }
   }, [])
-
-  // Eager Ably connect in live mode so race:{id} can attach during countdown
-  useEffect(() => {
-    if (mode !== 'live') return
-    if (hasAblyKeyConfigured()) ensureAblyConnected()
-  }, [mode])
 
   // Adaptive soft-refresh: ~5s near post / while a race is due, else 15s
   useEffect(() => {

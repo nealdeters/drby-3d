@@ -158,7 +158,7 @@ function RacingField({
         const shown = fracProgress(s.progress)
         const offWire = Math.abs(shown - GATE_OVAL) > 0.02 && Math.abs(shown - GATE_OVAL) < 0.98
         const alreadyOut = (s.lastOverall ?? 0) > 0.02 || offWire
-        // If Ably already has them off the gate (late join / flicker), do not yank home.
+        // If a live snapshot already has them off the gate (late join / flicker), do not yank home.
         if (!alreadyOut) {
           s.progress = GATE_OVAL
           s.pace = 0

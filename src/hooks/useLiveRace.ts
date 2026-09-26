@@ -1,14 +1,12 @@
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react'
 import {
-  ensureAblyConnected,
-  getAblyClient,
-  getRaceChannel,
-  hasAblyKeyConfigured,
+  createRaceSubscription,
+  hasRealtimeConfigured,
 } from '../services/apiClient'
 import type { LiveRacer, RaceUpdate } from '../types/live'
 
 export type LiveFeedState = {
-  /** Ably key present and channel subscribed (or connected) */
+  /** House-bus (or rollback Ably) channel subscribed. */
   feedConnected: boolean
   isRacing: boolean
   status: 'idle' | 'waiting' | 'racing' | 'finished'
@@ -32,7 +30,7 @@ type Options = {
   seedRacers?: LiveRacer[]
   /** Scheduled start ms — used to decide mid-race snapshot vs clean early attach */
   raceStartTime?: number | null
-  /** Fired when Ably delivers finished (season marks complete; UI holds the field 30s) */
+  /** Fired when realtime delivers finished (season marks complete; UI holds the field 30s) */
   onRaceFinished?: (raceId: string, resultIds: string[]) => void
 }
 
@@ -95,7 +93,7 @@ function noteFinishers(
 }
 
 /**
- * Subscribe to Ably `race:{raceId}` / `race-update` for live pack progress.
+ * Subscribe to the configured race transport / `race-update` for live pack progress.
  * progressMap is overall race 0–1 (`total_distance / (length*laps)`).
  * Never call setRacers on progress ticks — only mutate progressRef / laneRef.
  *
@@ -182,7 +180,7 @@ export function useLiveRace({
   }, [raceId])
 
   useEffect(() => {
-    if (!enabled || !raceId || !hasAblyKeyConfigured()) {
+    if (!enabled || !raceId || !hasRealtimeConfigured()) {
       setFeedConnected(false)
       setIsRacing(false)
       setStatus('idle')
@@ -192,17 +190,8 @@ export function useLiveRace({
       return
     }
 
-    // Warm connection immediately (before Race canvas mounts)
-    ensureAblyConnected()
-    const client = getAblyClient()
-    if (!client) {
-      setFeedConnected(false)
-      return
-    }
-
     let cancelled = false
-    let channel: ReturnType<typeof getRaceChannel> | null = null
-    let attachedListener: ((stateChange: { hasBacklog?: boolean; resumed?: boolean }) => void) | null = null
+    let subscription: ReturnType<typeof createRaceSubscription> | null = null
     const expectedRaceId = raceId
 
     const applyUpdate = (update: RaceUpdate) => {
@@ -384,9 +373,7 @@ export function useLiveRace({
       if (cancelled) return
       try {
         const startMs = typeof raceStartTime === 'number' ? raceStartTime : null
-        // Mid-race join only: one last message — never rewind multi-second progress floods
         const midRace = startMs != null && Date.now() >= startMs + 1500
-        channel = getRaceChannel(expectedRaceId, { midRaceSnapshot: midRace })
         const keepMotion = lastElapsedRef.current > 400 && raceIdRef.current === expectedRaceId
         subscribedId.current = expectedRaceId
         if (!keepMotion) {
@@ -395,32 +382,30 @@ export function useLiveRace({
         }
         coalesceBufRef.current = []
 
-        attachedListener = (stateChange) => {
-          if (cancelled) return
-          if (stateChange?.hasBacklog || stateChange?.resumed) {
-            coalescingRef.current = true
-            if (coalesceTimerRef.current) clearTimeout(coalesceTimerRef.current)
-            // If no backlog messages arrive, clear coalescing shortly
-            coalesceTimerRef.current = setTimeout(flushCoalesce, 80)
-          } else {
-            // Clean attach (typical early subscribe before start) — apply ticks immediately.
-            // Do not drop liveSynced mid-race: that lets a replayed "started" zero the pack.
-            coalescingRef.current = false
-            if (!(lastElapsedRef.current > 400)) {
-              liveSyncedRef.current = false
+        subscription = createRaceSubscription(
+          expectedRaceId,
+          onMessage as (message: { data?: unknown }) => void,
+          (stateChange) => {
+            if (cancelled) return
+            if (stateChange?.hasBacklog || stateChange?.resumed) {
+              coalescingRef.current = true
+              if (coalesceTimerRef.current) clearTimeout(coalesceTimerRef.current)
+              coalesceTimerRef.current = setTimeout(flushCoalesce, 80)
+            } else {
+              coalescingRef.current = false
+              if (!(lastElapsedRef.current > 400)) liveSyncedRef.current = false
             }
-          }
-        }
-        channel.on('attached', attachedListener)
-
-        channel.subscribe('race-update', onMessage)
-        setFeedConnected(true)
-        // Do not force isRacing=false on (re)attach — that parks every horse on the
-        // start wire for a frame and looks like they vanished.
-        setStatus((s) => (s === 'finished' || s === 'racing' ? s : 'waiting'))
-        console.log(
-          `[useLiveRace] subscribed race:${expectedRaceId}${midRace ? ' (mid-race snapshot)' : ' (early)'}`,
+          },
+          (err) => {
+            if (!cancelled) {
+              console.warn('[useLiveRace] transport error', err)
+              setFeedConnected(false)
+            }
+          },
         )
+        setFeedConnected(true)
+        setStatus((s) => (s === 'finished' || s === 'racing' ? s : 'waiting'))
+        console.log(`[useLiveRace] subscribed race:${expectedRaceId}${midRace ? ' (mid-race snapshot)' : ' (early)'}`)
       } catch (err) {
         console.warn('[useLiveRace] subscribe failed', err)
         setFeedConnected(false)
@@ -434,33 +419,16 @@ export function useLiveRace({
       }
       coalesceBufRef.current = []
       coalescingRef.current = false
-      if (channel && subscribedId.current) {
-        try {
-          channel.unsubscribe('race-update')
-          if (attachedListener) channel.off('attached', attachedListener)
-        } catch {
-          /* ignore */
-        }
-        try {
-          void channel.detach()
-        } catch {
-          /* ignore */
-        }
+      try {
+        subscription?.close()
+      } catch {
+        /* ignore */
       }
+      subscription = null
       subscribedId.current = null
     }
 
-    if (client.connection.state === 'connected') {
-      setup()
-    } else {
-      const onConnect = () => {
-        if (!cancelled) setup()
-        client.connection.off('connected', onConnect)
-      }
-      client.connection.on('connected', onConnect)
-      // Also try immediately — Ably queues attach until connected
-      setup()
-    }
+    setup()
 
     return () => {
       cancelled = true

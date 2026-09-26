@@ -192,7 +192,7 @@ export function overallRateFromSamples(prev: number, next: number, dtSec: number
   return Math.min(rate, MAX_OVERALL_RATE)
 }
 
-/** Keep the pack moving through Ably gaps instead of pinning to the last sample. */
+/** Keep the pack moving through realtime gaps instead of pinning to the last sample. */
 export function coastOverall(
   last: number,
   rate: number | undefined,
@@ -299,16 +299,17 @@ export function stepField(
 
     let target = s.radial
     if (phase === 'bunch') {
-      // Compress toward centerline / slight inside
-      target = THREE.MathUtils.lerp(s.radial, -0.15 + (i % 3) * 0.12, 0.4)
+      // The inside line is the natural default: keep the pack visibly near
+      // the rail instead of spreading every horse across the track.
+      target = THREE.MathUtils.lerp(s.radial, -0.46 + (i % 3) * 0.08, 0.5)
     } else if (phase === 'jockey') {
       // Prefer inside on turns; weave / draft off-turn
       if (onTurn) {
-        target = -0.55 + (i % 4) * 0.12
+        target = -0.72 + (i % 4) * 0.08
       } else {
         // Oscillate lane choice so they jockey
         const weave = Math.sin(s.progress * Math.PI * 2 * 1.7 + i * 1.3) * 0.45
-        target = weave + (i % 2 === 0 ? -0.2 : 0.25)
+        target = Math.min(weave + (i % 2 === 0 ? -0.28 : 0.08), 0.18)
       }
       // Draft: if someone is just ahead, tuck toward their radial
       for (let j = 0; j < n; j++) {
@@ -323,9 +324,10 @@ export function stepField(
       }
     } else {
       // Stretch: spread out, faster horses push wider or hold inside for run
-      const spread = ((i / Math.max(n - 1, 1)) * 2 - 1) * 0.75
-      target = spread
-      if (onTurn) target = Math.min(target, -0.25)
+      const spread = ((i / Math.max(n - 1, 1)) * 2 - 1) * 0.48
+      // Even when the field stretches, bias the visible line inward.
+      target = spread - 0.22
+      if (onTurn) target = Math.min(target, -0.34)
     }
 
     desired[i] = THREE.MathUtils.clamp(target, -0.92, 0.92)

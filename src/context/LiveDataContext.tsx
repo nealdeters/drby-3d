@@ -9,7 +9,7 @@ import {
 import type { LiveRaceEvent } from '../types/live'
 
 export type LiveDataValue = LiveSeasonState & {
-  /** App-level Ably race feed — subscribed as soon as upcoming raceId is known */
+  /** App-level realtime race feed — subscribed as soon as upcoming raceId is known */
   raceFeed: LiveFeedState
   /** Finished race pinned on the wire (and official board) until `until`. */
   photoFinish: PhotoFinishHold | null
