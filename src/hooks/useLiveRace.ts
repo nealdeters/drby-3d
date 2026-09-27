@@ -4,6 +4,7 @@ import {
   hasRealtimeConfigured,
 } from '../services/apiClient'
 import type { LiveRacer, RaceUpdate } from '../types/live'
+import { inferRaceUpdateType, parseRaceUpdate } from './liveRaceStart'
 
 export type LiveFeedState = {
   /** House-bus (or rollback Ably) channel subscribed. */
@@ -137,11 +138,11 @@ export function useLiveRace({
 
   const applyLaneProgressFromList = useCallback((list: LiveRacer[], writeProgress: boolean) => {
     for (const r of list) {
-      if (writeProgress && typeof r.progress === 'number') {
-        // Prefer progressMap for oval drive; racer.progress only as seed fallback
-        if (progressRef.current[r.id] === undefined) {
-          progressRef.current[r.id] = r.progress
-        }
+      if (writeProgress && typeof r.progress === 'number' && Number.isFinite(r.progress)) {
+        // A progress-bearing racer packet is authoritative when progressMap is
+        // absent. Do not only seed an undefined key: commitRoster initializes
+        // keys to zero, which previously left such races parked at the gate.
+        progressRef.current[r.id] = r.progress
       }
       if (typeof r.lane === 'number' && r.lane > 0) {
         laneRef.current[r.id] = r.lane
@@ -249,9 +250,12 @@ export function useLiveRace({
 
       // Lane/traffic updates are mutable so the canvas can consume them every frame
       // without React re-rendering the WebGL tree at bus frequency.
-      if (update.racers) applyLaneProgressFromList(update.racers, false)
+      // Seed progress from racer-shaped payloads too. Some live publishers omit
+      // progressMap and send the same progress under each racer instead.
+      if (update.racers) applyLaneProgressFromList(update.racers, true)
+      const updateType = inferRaceUpdateType(update)
 
-      if (update.type === 'started') {
+      if (updateType === 'started') {
         // A late/replayed "started" after we are already rolling must not zero the pack
         // (that is the vanish-at-gate / reappear glitch).
         const alreadyRolling =
@@ -294,7 +298,7 @@ export function useLiveRace({
         setIsRacing(true)
         setStatus('racing')
         setFeedConnected(true)
-      } else if (update.type === 'progress') {
+      } else if (updateType === 'progress') {
         // Apply progress immediately — RaceScene interpolates from gate; do not batch-skip
         if (update.progressMap) {
           for (const [id, p] of Object.entries(update.progressMap)) {
@@ -308,7 +312,7 @@ export function useLiveRace({
         setIsRacing(true)
         setStatus('racing')
         setFeedConnected(true)
-      } else if (update.type === 'finished') {
+      } else if (updateType === 'finished') {
         if (update.progressMap) {
           for (const [id, p] of Object.entries(update.progressMap)) {
             if (typeof p === 'number' && Number.isFinite(p)) {
@@ -346,15 +350,22 @@ export function useLiveRace({
           update.results?.map((r) => r.id) ??
           (finishOrderRef.current.length ? [...finishOrderRef.current] : [])
         onFinishedRef.current?.(expectedRaceId, resultIds)
-      } else if (update.progressMap) {
-        // Unknown type with progress — still apply so we never drop ticks
-        for (const [id, p] of Object.entries(update.progressMap)) {
-          if (typeof p === 'number' && Number.isFinite(p)) {
-            progressRef.current[id] = p
+      } else if (update.progressMap || update.racers) {
+        // Runtime payloads with an omitted/legacy type are still live race
+        // updates. Never leave the canvas parked at the gate just because the
+        // publisher called this packet `tick` or `update`.
+        if (update.progressMap) {
+          for (const [id, p] of Object.entries(update.progressMap)) {
+            if (typeof p === 'number' && Number.isFinite(p)) {
+              progressRef.current[id] = p
+            }
           }
         }
         noteFinishers(finishOrderRef.current, update.progressMap, update.racers)
         liveSyncedRef.current = true
+        setIsRacing(true)
+        setStatus('racing')
+        setFeedConnected(true)
       }
     }
 
@@ -369,17 +380,17 @@ export function useLiveRace({
       }
       // Time-order then collapse: honor started, then latest progress/finished by elapsed
       buf.sort((a, b) => (a.elapsed ?? a.timestamp ?? 0) - (b.elapsed ?? b.timestamp ?? 0))
-      const started = buf.find((u) => u.type === 'started')
-      const finished = [...buf].reverse().find((u) => u.type === 'finished')
-      const latestLive = [...buf].reverse().find((u) => u.type === 'progress' || !!u.progressMap)
+      const started = buf.find((u) => inferRaceUpdateType(u) === 'started')
+      const finished = [...buf].reverse().find((u) => inferRaceUpdateType(u) === 'finished')
+      const latestLive = [...buf].reverse().find((u) => inferRaceUpdateType(u) === 'progress')
       if (started) applyUpdate(started)
       if (finished) applyUpdate(finished)
       else if (latestLive && latestLive !== started) applyUpdate(latestLive)
       liveSyncedRef.current = true
     }
 
-    const onMessage = (message: { data?: RaceUpdate }) => {
-      const update = message.data
+    const onMessage = (message: { data?: unknown }) => {
+      const update = parseRaceUpdate(message.data)
       if (!update || update.raceId !== expectedRaceId) return
 
       // Attach backlog / resume flood — coalesce briefly, then apply latest (keep UX smooth)
