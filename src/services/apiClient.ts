@@ -23,21 +23,36 @@ export function hasApiKeyConfigured(): boolean {
 }
 
 export type RealtimeTransport = 'house_bus' | 'ably'
-export function realtimeTransport(): RealtimeTransport {
-  return (import.meta.env.VITE_REALTIME_TRANSPORT as string | undefined)?.trim() === 'ably'
-    ? 'ably'
-    : 'house_bus'
-}
 
-export function hasAblyKeyConfigured(): boolean {
-  return realtimeTransport() === 'ably' && Boolean((import.meta.env.VITE_ABLY_API_KEY as string | undefined)?.trim())
-}
-
-export function hasHouseBusConfigured(): boolean {
-  return realtimeTransport() === 'house_bus' && Boolean(
+function hasHouseBusEndpoint(): boolean {
+  return Boolean(
     ((import.meta.env.VITE_HOUSE_BUS_WS_URL as string | undefined)?.trim()) ||
     ((import.meta.env.VITE_HOUSE_BUS_URL as string | undefined)?.trim()),
   )
+}
+
+function hasAblyEndpoint(): boolean {
+  return Boolean((import.meta.env.VITE_ABLY_API_KEY as string | undefined)?.trim())
+}
+
+export function realtimeTransport(): RealtimeTransport {
+  const requested = (import.meta.env.VITE_REALTIME_TRANSPORT as string | undefined)?.trim()
+  if (requested === 'ably') return 'ably'
+  if (requested === 'house_bus') return 'house_bus'
+  // Keep existing Netlify deployments running while they migrate: the old
+  // site supplied only VITE_ABLY_API_KEY. Prefer house bus when its endpoint
+  // is present; otherwise use the configured Ably rollback automatically.
+  if (hasHouseBusEndpoint()) return 'house_bus'
+  if (hasAblyEndpoint()) return 'ably'
+  return 'house_bus'
+}
+
+export function hasAblyKeyConfigured(): boolean {
+  return realtimeTransport() === 'ably' && hasAblyEndpoint()
+}
+
+export function hasHouseBusConfigured(): boolean {
+  return realtimeTransport() === 'house_bus' && hasHouseBusEndpoint()
 }
 
 export function hasRealtimeConfigured(): boolean {
