@@ -3,6 +3,7 @@ import { RaceHUD } from '../components/race/RaceHUD'
 import { LaneDebugPanel } from '../components/race/LaneDebugPanel'
 import { ResultsBoard } from '../components/race/ResultsBoard'
 import { RaceScene } from '../components/race/RaceScene'
+import type { RacingLineDecision } from '../components/race/racingLinePlanner'
 import { useLiveData } from '../context/LiveDataContext'
 import { mapLiveRacerToHorse } from '../hooks/useLiveSeason'
 import type { RaceEntry } from '../data/fakeSeason'
@@ -153,7 +154,9 @@ export function RaceView() {
   ])
 
   const liveFeed = season.mode === 'live'
+  const syntheticTraffic = new URLSearchParams(window.location.search).get('traffic') === '1'
 
+  const lineDecisionRef = useRef<Record<string, RacingLineDecision>>({})
   const [followId, setFollowId] = useState<string | null>(null)
   const [homeNonce, setHomeNonce] = useState(0)
   const [viewMode, setViewMode] = useState<ViewMode>(DEFAULT_VIEW)
@@ -207,15 +210,17 @@ export function RaceView() {
       >
         <RaceScene
           horses={horses}
-          liveFeed={liveFeed}
-          isRacing={feed.isRacing}
+          liveFeed={liveFeed || syntheticTraffic}
+          isRacing={feed.isRacing || syntheticTraffic}
           trackLaps={trackLaps}
           surface={trackSurface}
           progressRef={feed.progressRef}
           laneRef={feed.laneRef}
           lanePositionRef={feed.lanePositionRef}
           laneChangeRef={feed.laneChangeRef}
+          lineDecisionRef={lineDecisionRef}
           raceId={shownRace?.id ?? null}
+          syntheticTraffic={syntheticTraffic}
           viewMode={viewMode}
           followId={followId}
           homeNonce={homeNonce}
@@ -226,6 +231,7 @@ export function RaceView() {
         horses={horses}
         laneDecisionRef={feed.laneDecisionRef}
         laneChangeRef={feed.laneChangeRef}
+        lineDecisionRef={lineDecisionRef}
       />
       <RaceHUD
         mode={season.mode}

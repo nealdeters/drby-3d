@@ -27,6 +27,7 @@ import { RaceCamera } from './RaceCamera'
 import { raceBridge } from './raceBridge'
 import { laneToRadial, moveRadialToward } from './laneMotion'
 import { chooseTrafficLanes } from './trafficLanePlanner'
+import { chooseRacingLines, type RacingLineDecision } from './racingLinePlanner'
 import { DEFAULT_VIEW, VIEW_AERIAL, VIEW_CHASE, type ViewMode } from './cameraViews'
 
 export { overallToOvalProgress, GATE_OVAL }
@@ -49,8 +50,12 @@ type FieldProps = {
   lanePositionRef?: MutableRefObject<Record<string, number>>
   /** Active authoritative transitions; tactical fallback never overrides these. */
   laneChangeRef?: MutableRefObject<Record<string, { from?: number; to?: number; progress?: number }>>
+  /** Client-side continuous racing-line decisions for debug inspection. */
+  lineDecisionRef?: MutableRefObject<Record<string, RacingLineDecision>>
   /** Current live race id — reset motion when it changes */
   raceId?: string | null
+  /** Deterministic browser-only traffic scenario (?traffic=1) for visual verification. */
+  syntheticTraffic?: boolean
   surface?: TrackSurface
   followId?: string | null
   viewMode?: ViewMode
@@ -75,7 +80,9 @@ function RacingField({
   laneRef,
   lanePositionRef,
   laneChangeRef,
+  lineDecisionRef,
   raceId,
+  syntheticTraffic = false,
   surface = 'dirt',
   followId = null,
   viewMode = DEFAULT_VIEW,
@@ -103,6 +110,10 @@ function RacingField({
   const tacticalModeRef = useRef(false)
   const nextTacticalDecisionAtRef = useRef(0)
   const tacticalDecisionRef = useRef<Record<string, ReturnType<typeof chooseTrafficLanes>[number]>>({})
+  /** Continuous steering targets: unlike a lane, this is a point on the track. */
+  const racingLineTargetRef = useRef<Record<string, number>>({})
+  const racingLineDecisionRef = useRef<Record<string, RacingLineDecision>>({})
+  const nextRacingLineDecisionAtRef = useRef(0)
 
   useEffect(() => {
     traceEnabledRef.current = new URLSearchParams(window.location.search).get('debug') === '1'
@@ -122,6 +133,9 @@ function RacingField({
     tacticalModeRef.current = false
     nextTacticalDecisionAtRef.current = 0
     tacticalDecisionRef.current = {}
+    racingLineTargetRef.current = {}
+    racingLineDecisionRef.current = {}
+    nextRacingLineDecisionAtRef.current = 0
     for (const s of fieldRef.current) {
       clearLiveMotion(s)
       if (liveFeed) {
@@ -252,6 +266,42 @@ function RacingField({
         }
         nextTacticalDecisionAtRef.current = nowForFrame() + 0.55
       }
+
+      // Always run continuous racing-line steering for live races. The old
+      // implementation only did this in the fixed-lane fallback, which meant
+      // authoritative lane updates still made horses run on parallel rails.
+      if (nowForFrame() >= nextRacingLineDecisionAtRef.current) {
+        const lineSnapshots = horses.map((h, i) => {
+          const state = states.find((candidate) => candidate.id === h.id) ?? states[i]
+          const serverLane = serverLanes[h.id] ?? i + 1
+          const radial = state?.radial ?? laneToRadial(serverLane, horses.length)
+          return {
+            id: h.id,
+            progress: state?.lastOverall ?? readOverall(progressRef?.current, h.id) ?? 0,
+            radial,
+            laneRadial: laneToRadial(serverLane, horses.length),
+            speed: state?.overallRate ?? 0.032,
+            strategy: h.speedBias >= 1.03 ? 'aggressive' as const : h.speedBias <= 0.98 ? 'conservative' as const : 'balanced' as const,
+          }
+        })
+        const lineDecisions = chooseRacingLines(lineSnapshots)
+        racingLineDecisionRef.current = Object.fromEntries(lineDecisions.map((decision) => [decision.horseId, decision]))
+        if (lineDecisionRef) lineDecisionRef.current = racingLineDecisionRef.current
+        for (const decision of lineDecisions) {
+          racingLineTargetRef.current[decision.horseId] = decision.desiredRadial
+        }
+        nextRacingLineDecisionAtRef.current = nowForFrame() + 0.18
+      }
+    }
+
+    if (syntheticTraffic) {
+      // Browser verification mode uses the same live traffic planner and
+      // renderer with a deterministic eight-horse feed, without a backend.
+      const elapsed = raceAgeRef.current
+      horses.forEach((h, i) => {
+        const rate = 0.022 + (i % 4) * 0.0025
+        progressRef!.current[h.id] = Math.min(0.96, 0.01 + elapsed * rate)
+      })
     }
 
     if (liveFeed) {
@@ -298,10 +348,16 @@ function RacingField({
           tacticalModeRef.current && !authoritativeChange
             ? (tacticalLaneRef.current[h.id] ?? serverLane)
             : serverLane
-        const targetRadial = laneToRadial(lane, horses.length)
-        // Follow a continuous server lane when available; fixed-lane feeds use
-        // the traffic planner above. Both paths use the same slow lateral easing.
-        s.radial = moveRadialToward(s.radial, targetRadial, clamped, 4.5)
+        const serverRadial = laneToRadial(lane, horses.length)
+        const lineTarget = racingLineTargetRef.current[h.id]
+        // A server lane is a coarse intent. The continuous target is the
+        // actual racing line, selected from traffic and inside advantage.
+        // Keep a little server influence so an explicit outside pass remains
+        // visible, but never snap back to a numbered rail.
+        const targetRadial = typeof lineTarget === 'number'
+          ? lineTarget * 0.82 + serverRadial * 0.18
+          : serverRadial
+        s.radial = moveRadialToward(s.radial, targetRadial, clamped, 1.65)
         const sample = readOverall(progressRef.current, h.id)
         if (typeof sample === 'number') {
           const prevOverall = s.lastOverall
@@ -367,6 +423,7 @@ function RacingField({
           frameCount: number
           tacticalMode?: boolean
           tacticalDecisions?: Record<string, ReturnType<typeof chooseTrafficLanes>[number]>
+          racingLineDecisions?: Record<string, RacingLineDecision>
           horses: Array<{ id?: string; progress: number; radial: number; lanePosition?: number; finishCruising?: boolean }>
         }
       }
@@ -374,6 +431,7 @@ function RacingField({
       trace.frameCount += 1
       trace.tacticalMode = tacticalModeRef.current
       trace.tacticalDecisions = tacticalDecisionRef.current
+      trace.racingLineDecisions = racingLineDecisionRef.current
       trace.horses = states.map((s) => ({
         id: s.id,
         progress: s.progress,
@@ -453,7 +511,9 @@ export type RaceSceneProps = {
   /** Continuous lane position from the simulator (fractional lane number). */
   lanePositionRef?: MutableRefObject<Record<string, number>>
   laneChangeRef?: MutableRefObject<Record<string, { from?: number; to?: number; progress?: number }>>
+  lineDecisionRef?: MutableRefObject<Record<string, RacingLineDecision>>
   raceId?: string | null
+  syntheticTraffic?: boolean
   viewMode?: ViewMode
   followId?: string | null
   homeNonce?: number
@@ -470,7 +530,9 @@ export const RaceScene = memo(function RaceScene({
   laneRef,
   lanePositionRef,
   laneChangeRef,
+  lineDecisionRef,
   raceId = null,
+  syntheticTraffic = false,
   viewMode = DEFAULT_VIEW,
   followId = null,
   homeNonce = 0,
@@ -519,7 +581,9 @@ export const RaceScene = memo(function RaceScene({
         laneRef={laneRef}
         lanePositionRef={lanePositionRef}
         laneChangeRef={laneChangeRef}
+        lineDecisionRef={lineDecisionRef}
         raceId={raceId}
+        syntheticTraffic={syntheticTraffic}
         surface={surface}
         followId={followId}
         viewMode={viewMode}

@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState, type MutableRefObject } from 'react'
 import type { Horse } from '../../data/fakeSeason'
 import type { LiveRacer } from '../../types/live'
+import type { RacingLineDecision } from './racingLinePlanner'
 
 type Props = {
   horses: Horse[]
   laneDecisionRef: MutableRefObject<Record<string, NonNullable<LiveRacer['laneDecision']>>>
   laneChangeRef: MutableRefObject<Record<string, NonNullable<LiveRacer['laneChange']>>>
+  lineDecisionRef?: MutableRefObject<Record<string, RacingLineDecision>>
 }
 
 type Row = {
@@ -19,9 +21,10 @@ type Row = {
  * Explicit race telemetry only; this intentionally shows inputs/factors and the
  * selected action, never hidden model reasoning. Enable with ?debug=1.
  */
-export function LaneDebugPanel({ horses, laneDecisionRef, laneChangeRef }: Props) {
+export function LaneDebugPanel({ horses, laneDecisionRef, laneChangeRef, lineDecisionRef }: Props) {
   const [enabled, setEnabled] = useState(false)
   const [rows, setRows] = useState<Row[]>([])
+  const [lineRows, setLineRows] = useState<RacingLineDecision[]>([])
 
   const names = useMemo(() => new Map(horses.map((horse) => [horse.id, horse.name])), [horses])
 
@@ -41,13 +44,14 @@ export function LaneDebugPanel({ horses, laneDecisionRef, laneChangeRef }: Props
         .sort((a, b) => (b.decision.evaluatedAtTick ?? 0) - (a.decision.evaluatedAtTick ?? 0))
         .slice(0, 8)
       setRows(next)
+      if (lineDecisionRef) setLineRows(Object.values(lineDecisionRef.current))
     }
     update()
     const timer = window.setInterval(update, 120)
     return () => window.clearInterval(timer)
-  }, [laneDecisionRef, laneChangeRef, names])
+  }, [laneDecisionRef, laneChangeRef, lineDecisionRef, names])
 
-  if (!enabled || !rows.length) return null
+  if (!enabled || (!rows.length && !lineRows.length)) return null
 
   return (
     <aside className="lane-debug" data-testid="lane-debug">
@@ -72,6 +76,25 @@ export function LaneDebugPanel({ horses, laneDecisionRef, laneChangeRef }: Props
           </div>
         )
       })}
+      {lineRows.length > 0 && (
+        <>
+          <div className="lane-debug__title">Continuous racing-line steering</div>
+          {lineRows.map((d) => (
+            <div className="lane-debug__row" key={`line-${d.horseId}`}>
+              <strong>{names.get(d.horseId) ?? d.horseId}</strong>
+              <span>
+                radial {d.currentRadial.toFixed(2)} → {d.desiredRadial.toFixed(2)} · {d.decision.toUpperCase()}
+              </span>
+              <span>
+                {d.reason}{d.blockerId ? ` · blocker ${names.get(d.blockerId) ?? d.blockerId}` : ''}
+              </span>
+              <span>
+                target space {d.targetSpaceAvailable ? 'available' : 'occupied'} · competing {d.competingIds.length}
+              </span>
+            </div>
+          ))}
+        </>
+      )}
     </aside>
   )
 }
